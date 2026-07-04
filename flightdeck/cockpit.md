@@ -19,6 +19,7 @@ Group-admin plugin implementation and reusable package structure for the Fraq bo
 - group-admin/help - `help`/`帮助`/`菜单` shows commands and current group switch status.
 
 ## Next
+- Log in to npm with `npm adduser` or provide an npm token, then publish `fraq-plugin-group-admin@0.1.0`.
 - Choose the next group-admin moderation feature or group-specific configuration.
 
 ## Open questions

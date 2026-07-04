@@ -6,6 +6,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Next
 
+- Log in to npm with `npm adduser` or provide an npm token, then run `npm publish --access public`.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -81,9 +82,10 @@ Done:
 - Corrected the incompatible `@fraqjs/mock ^0.12.0` dev dependency after verifying npm publishes `@fraqjs/mock` only at `0.1.0` with a Fraq `^0.6.0` peer. `test/smoke.ts` is now a lightweight export-load smoke test with no mock dependency.
 - Updated Biome schema to 2.5.2, switched Node built-in imports to `node:` specifiers, handled the unused scheduler options parameter, and applied Biome formatting/import organization.
 - Verified with `pnpm lint`, `pnpm check`, `pnpm smoke`, and `pnpm build`.
+- Prepared npm release `fraq-plugin-group-admin@0.1.0`: package name is available on npm, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` all pass. Publish is blocked because `npm whoami` returns `ENEEDAUTH`.
 
 Blocked/known:
-- None tracked.
+- npm publish needs authentication on this machine.
 
 ## Open questions
 
