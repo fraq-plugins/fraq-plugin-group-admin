@@ -83,6 +83,8 @@ Done:
 - Updated Biome schema to 2.5.2, switched Node built-in imports to `node:` specifiers, handled the unused scheduler options parameter, and applied Biome formatting/import organization.
 - Verified with `pnpm lint`, `pnpm check`, `pnpm smoke`, and `pnpm build`.
 - Prepared npm release `fraq-plugin-group-admin@0.1.0`: package name is available on npm, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` all pass. Publish is blocked because `npm whoami` returns `ENEEDAUTH`.
+- Added `npm start` support by wiring the `start` script to the lightweight export-load smoke test, fixing npm's fallback error `Missing script start or file server.js`.
+- Verified the start-script fix with `npm start`, `pnpm lint`, `pnpm check`, `pnpm build`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs authentication on this machine.
