@@ -85,6 +85,8 @@ Done:
 - Prepared npm release `fraq-plugin-group-admin@0.1.0`: package name is available on npm, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` all pass. Publish is blocked because `npm whoami` returns `ENEEDAUTH`.
 - Added `npm start` support by wiring the `start` script to the lightweight export-load smoke test, fixing npm's fallback error `Missing script start or file server.js`.
 - Verified the start-script fix with `npm start`, `pnpm lint`, `pnpm check`, `pnpm build`, and `npm pack --dry-run`.
+- Added `README.md` covering installation, Fraq usage, feature scope, commands, configuration options, permissions, persisted data, `SchedulerPlugin`, and development commands.
+- Verified the README change with `pnpm lint`, `pnpm check`, `pnpm build`, and `npm pack --dry-run`; dry-run includes `README.md` in the npm tarball.
 
 Blocked/known:
 - npm publish needs authentication on this machine.
