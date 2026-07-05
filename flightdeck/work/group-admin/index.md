@@ -6,7 +6,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Next
 
-- Log in to npm with `npm adduser` or provide an npm token, then run `npm publish --access public`.
+- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.1.1`.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -87,9 +87,11 @@ Done:
 - Verified the start-script fix with `npm start`, `pnpm lint`, `pnpm check`, `pnpm build`, and `npm pack --dry-run`.
 - Added `README.md` covering installation, Fraq usage, feature scope, commands, configuration options, permissions, persisted data, `SchedulerPlugin`, and development commands.
 - Verified the README change with `pnpm lint`, `pnpm check`, `pnpm build`, and `npm pack --dry-run`; dry-run includes `README.md` in the npm tarball.
+- Bumped the package version from `0.1.0` to `0.1.1` because npm already has `fraq-plugin-group-admin@0.1.0` and versions cannot be overwritten.
+- Verified `0.1.1` with `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`; `npm publish --access public` reached npm but is blocked by `EOTP`.
 
 Blocked/known:
-- npm publish needs authentication on this machine.
+- npm publish needs a one-time password or browser authentication for the logged-in npm account.
 
 ## Open questions
 
