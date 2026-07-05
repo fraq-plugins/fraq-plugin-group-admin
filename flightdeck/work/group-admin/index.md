@@ -21,8 +21,11 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Read if
 
-- plugins/group-admin.ts - if changing group moderation behavior.
-- index.ts - if changing installed plugins or plugin options.
+- src/group-admin/index.ts - if changing plugin assembly or command registration.
+- src/group-admin/event-handlers.ts - if changing message, member, or join-request event behavior.
+- src/group-admin/scheduled-tasks.ts - if changing inactive cleanup or blacklist scans.
+- src/group-admin/data-store.ts - if changing persisted runtime data.
+- src/index.ts - if changing package exports.
 
 ## Progress
 
@@ -123,6 +126,7 @@ Blocked/known:
 - Publishing `0.5.0` is currently blocked because `npm whoami` reports `ENEEDAUTH`; npm shows `fraq-plugin-group-admin` is owned by `wanjunhui <2401128923@qq.com>` and currently has published versions `0.1.0`, `0.1.1`, and `0.1.2`.
 - Added forbidden-word moderation for `0.6.0`: persisted `forbiddenWords`, configurable `forbiddenWordMuteDurationSeconds`, `/添加违禁词` and `/删除违禁词` commands with `word-add`/`word-del` aliases, and automatic mute when ordinary non-whitelisted members send matching text.
 - Added the project rule to check official Fraq plugins before implementing new features, with `random` noted as an example of existing reusable plugin behavior.
+- Refactored group-admin into a directory-based module with `src/group-admin/index.ts` as the plugin entry and separate files for command definitions, data persistence, event handlers, scheduled tasks, message utilities, and public option types.
 
 ## Open questions
 

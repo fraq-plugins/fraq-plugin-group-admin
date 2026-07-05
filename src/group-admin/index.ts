@@ -1,263 +1,29 @@
-import { definePlugin, type milky, msg, param, type Session, seg } from '@fraqjs/fraq';
+import { definePlugin, type milky, msg, param, type Session } from '@fraqjs/fraq';
 
-import { SchedulerService } from './scheduler';
+import { SchedulerService } from '../scheduler';
+import {
+  type GroupAdminCommandKey,
+  getGroupAdminCommandLabel,
+  groupAdminCommandDefinitions,
+  parseGroupAdminCommandKey,
+} from './command-definitions';
+import { createGroupAdminDataStore } from './data-store';
+import { registerEventHandlers } from './event-handlers';
+import {
+  canBotModerateTarget,
+  parseModerationDuration,
+  parseModerationTarget,
+  parseRecallCount,
+  parseRecallTarget,
+  parseReplySegment,
+  selectRecallMessages,
+  sortMessagesNewestFirst,
+  uniqueMessages,
+} from './message-utils';
+import { registerScheduledTasks } from './scheduled-tasks';
+import type { GroupAdminPluginOptions } from './types';
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
-
-function parseModerationTarget(segments: milky.IncomingSegment[]): number | undefined {
-  const mention = segments.find((segment) => segment.type === 'mention');
-  if (mention) {
-    return mention.data.user_id;
-  }
-
-  const match = segments
-    .filter((segment) => segment.type === 'text')
-    .map((segment) => segment.data.text)
-    .join(' ')
-    .match(/\d+/u);
-  return match ? Number(match[0]) : undefined;
-}
-
-function parseModerationDuration(segments: milky.IncomingSegment[], targetUserId: number): number | undefined {
-  const numbers = segments
-    .filter((segment) => segment.type === 'text')
-    .flatMap((segment) => segment.data.text.match(/\d+/gu) ?? [])
-    .map(Number);
-  const firstNonTargetNumber = numbers.find((number) => number !== targetUserId);
-  return firstNonTargetNumber && firstNonTargetNumber > 0 ? firstNonTargetNumber : undefined;
-}
-
-function canBotModerateTarget(
-  botRole: 'owner' | 'admin' | 'member',
-  targetRole: 'owner' | 'admin' | 'member',
-): boolean {
-  if (botRole === 'owner') {
-    return targetRole !== 'owner';
-  }
-
-  if (botRole === 'admin') {
-    return targetRole === 'member';
-  }
-
-  return false;
-}
-
-function parseTextNumbers(segments: milky.IncomingSegment[]): number[] {
-  return segments
-    .filter((segment) => segment.type === 'text')
-    .flatMap((segment) => segment.data.text.match(/\d+/gu) ?? [])
-    .map(Number);
-}
-
-function getMessagePlainText(segments: milky.IncomingSegment[]): string {
-  return segments
-    .filter((segment) => segment.type === 'text')
-    .map((segment) => segment.data.text)
-    .join('');
-}
-
-function parseRecallTarget(segments: milky.IncomingSegment[]): number | undefined {
-  const mention = segments.find((segment) => segment.type === 'mention');
-  if (mention) {
-    return mention.data.user_id;
-  }
-
-  const numbers = parseTextNumbers(segments);
-  return numbers.length > 1 ? numbers[0] : undefined;
-}
-
-function parseRecallCount(segments: milky.IncomingSegment[]): number | undefined {
-  const hasMentionTarget = segments.some((segment) => segment.type === 'mention');
-  const numbers = parseTextNumbers(segments);
-  const count = hasMentionTarget || numbers.length === 1 ? numbers[0] : numbers[1];
-  return count && count > 0 ? count : undefined;
-}
-
-function parseReplySegment(
-  segments: milky.IncomingSegment[],
-): Extract<milky.IncomingSegment, { type: 'reply' }> | undefined {
-  return segments.find((segment) => segment.type === 'reply') as
-    | Extract<milky.IncomingSegment, { type: 'reply' }>
-    | undefined;
-}
-
-function uniqueMessages(messages: milky.IncomingMessage[]): milky.IncomingMessage[] {
-  const seenMessageSeqs = new Set<number>();
-  return messages.filter((message) => {
-    if (seenMessageSeqs.has(message.message_seq)) {
-      return false;
-    }
-
-    seenMessageSeqs.add(message.message_seq);
-    return true;
-  });
-}
-
-function sortMessagesNewestFirst(messages: milky.IncomingMessage[]): milky.IncomingMessage[] {
-  return [...messages].sort((a, b) => b.message_seq - a.message_seq);
-}
-
-function selectRecallMessages(
-  messages: milky.IncomingMessage[],
-  anchorMessageSeq: number,
-  includeAnchor: boolean,
-  targetUserId: number | undefined,
-  protectedUserIds?: ReadonlySet<number>,
-): milky.IncomingMessage[] {
-  return sortMessagesNewestFirst(
-    uniqueMessages(messages).filter((message) => {
-      if (message.message_scene !== 'group') {
-        return false;
-      }
-
-      if (includeAnchor ? message.message_seq > anchorMessageSeq : message.message_seq >= anchorMessageSeq) {
-        return false;
-      }
-
-      if (protectedUserIds?.has(message.sender_id)) {
-        return false;
-      }
-
-      return targetUserId ? message.sender_id === targetUserId : true;
-    }),
-  );
-}
-
-function addIntegerArrayToSet(value: unknown, target: Set<number>): void {
-  if (!Array.isArray(value)) {
-    return;
-  }
-
-  for (const item of value) {
-    if (Number.isInteger(item)) {
-      target.add(item);
-    }
-  }
-}
-
-function addStringArrayToSet(value: unknown, target: Set<string>): void {
-  if (!Array.isArray(value)) {
-    return;
-  }
-
-  for (const item of value) {
-    if (typeof item === 'string' && item.trim()) {
-      target.add(item.trim());
-    }
-  }
-}
-
-function addBooleanRecordToMap(value: unknown, target: Map<number, boolean>): void {
-  if (!value || typeof value !== 'object') {
-    return;
-  }
-
-  for (const [key, item] of Object.entries(value)) {
-    const groupId = Number(key);
-    if (Number.isInteger(groupId) && typeof item === 'boolean') {
-      target.set(groupId, item);
-    }
-  }
-}
-
-function booleanMapToRecord(value: ReadonlyMap<number, boolean>): Record<string, boolean> {
-  return Object.fromEntries([...value.entries()].sort(([left], [right]) => left - right));
-}
-
-type GroupAdminCommandKey = 'title' | 'blacklist' | 'whitelist' | 'forbiddenWord' | 'kick' | 'mute' | 'recall';
-
-const groupAdminCommandDefinitions: {
-  key: GroupAdminCommandKey;
-  label: string;
-  names: readonly string[];
-}[] = [
-  { key: 'title', label: 'title', names: ['title', '头衔', '专属头衔'] },
-  { key: 'blacklist', label: '添加黑名单', names: ['添加黑名单', '黑名单', 'blacklist-add'] },
-  { key: 'whitelist', label: '添加白名单', names: ['添加白名单', '白名单', 'whitelist-add'] },
-  { key: 'forbiddenWord', label: '违禁词', names: ['添加违禁词', '删除违禁词', '违禁词', 'word-add', 'word-del'] },
-  { key: 'kick', label: '踢人', names: ['踢人', '踢', 'kick'] },
-  { key: 'mute', label: '禁言', names: ['禁言', 'mute'] },
-  { key: 'recall', label: '撤回', names: ['撤回', 'recall'] },
-];
-
-const commandNameMap = new Map(
-  groupAdminCommandDefinitions.flatMap(({ key, names }) =>
-    names.map((name) => [name.toLocaleLowerCase(), key] as const),
-  ),
-);
-
-function parseGroupAdminCommandKey(text: string): GroupAdminCommandKey | undefined {
-  return commandNameMap.get(text.trim().toLocaleLowerCase());
-}
-
-function getGroupAdminCommandLabel(key: GroupAdminCommandKey): string {
-  return groupAdminCommandDefinitions.find((definition) => definition.key === key)?.label ?? key;
-}
-
-function addCommandSwitchRecordToMap(value: unknown, target: Map<number, Map<GroupAdminCommandKey, boolean>>): void {
-  if (!value || typeof value !== 'object') {
-    return;
-  }
-
-  for (const [groupIdText, item] of Object.entries(value)) {
-    const groupId = Number(groupIdText);
-    if (!Number.isInteger(groupId) || !item || typeof item !== 'object') {
-      continue;
-    }
-
-    const switches = target.get(groupId) ?? new Map<GroupAdminCommandKey, boolean>();
-    for (const [commandKeyText, enabled] of Object.entries(item)) {
-      if (
-        groupAdminCommandDefinitions.some((definition) => definition.key === commandKeyText) &&
-        typeof enabled === 'boolean'
-      ) {
-        switches.set(commandKeyText as GroupAdminCommandKey, enabled);
-      }
-    }
-
-    target.set(groupId, switches);
-  }
-}
-
-function commandSwitchMapToRecord(
-  value: ReadonlyMap<number, ReadonlyMap<GroupAdminCommandKey, boolean>>,
-): Record<string, Record<GroupAdminCommandKey, boolean>> {
-  return Object.fromEntries(
-    [...value.entries()]
-      .sort(([left], [right]) => left - right)
-      .map(([groupId, switches]) => [
-        groupId,
-        Object.fromEntries([...switches.entries()].sort(([left], [right]) => left.localeCompare(right))) as Record<
-          GroupAdminCommandKey,
-          boolean
-        >,
-      ]),
-  );
-}
-
-export interface GroupAdminPluginOptions {
-  commandPrefix?: string;
-  minimumAllowedLevel?: number;
-  rejectionReason?: string;
-  manualRejectionReason?: string;
-  reviewerUserIds?: number[];
-  moderatorUserIds?: number[];
-  inactiveCleanupCron?: string;
-  inactiveCleanupFreeSlotsThreshold?: number;
-  inactiveCleanupKickLimit?: number;
-  spamDetectionWindowMs?: number;
-  spamDetectionSegmentLimit?: number;
-  spamAction?: 'kick' | 'mute';
-  spamMuteDurationSeconds?: number;
-  manualMuteDurationSeconds?: number;
-  forbiddenWords?: string[];
-  forbiddenWordMuteDurationSeconds?: number;
-  blacklistUserIds?: number[];
-  blacklistRejectionReason?: string;
-  blacklistCleanupCron?: string;
-  whitelistUserIds?: number[];
-}
+export type { GroupAdminPluginOptions } from './types';
 
 export const GroupAdminPlugin = definePlugin({
   name: 'group-admin',
@@ -284,16 +50,25 @@ export const GroupAdminPlugin = definePlugin({
     const spamAction = options?.spamAction ?? 'mute';
     const spamMuteDurationSeconds = options?.spamMuteDurationSeconds ?? 600;
     const manualMuteDurationSeconds = options?.manualMuteDurationSeconds ?? spamMuteDurationSeconds;
-    const forbiddenWords = new Set(options?.forbiddenWords?.map((word) => word.trim()).filter(Boolean) ?? []);
     const forbiddenWordMuteDurationSeconds = options?.forbiddenWordMuteDurationSeconds ?? spamMuteDurationSeconds;
-    const blacklistedUserIds = new Set(options?.blacklistUserIds ?? []);
     const blacklistRejectionReason = options?.blacklistRejectionReason ?? '已被加入黑名单';
-    const whitelistedUserIds = new Set(options?.whitelistUserIds ?? []);
-    const groupSwitches = new Map<number, boolean>();
-    const commandSwitches = new Map<number, boolean>();
-    const commandFeatureSwitches = new Map<number, Map<GroupAdminCommandKey, boolean>>();
-    const silentSwitches = new Map<number, boolean>();
-    const listDataPath = './data/data.json';
+    const dataStore = createGroupAdminDataStore(ctx, {
+      listDataPath: './data/data.json',
+      blacklistUserIds: options?.blacklistUserIds,
+      whitelistUserIds: options?.whitelistUserIds,
+      forbiddenWords: options?.forbiddenWords,
+    });
+    const {
+      blacklistedUserIds,
+      whitelistedUserIds,
+      forbiddenWords,
+      groupSwitches,
+      commandSwitches,
+      commandFeatureSwitches,
+      silentSwitches,
+      ready: listDataReady,
+      save: saveListData,
+    } = dataStore;
     const pendingJoinRequests = new Map<
       number,
       {
@@ -304,56 +79,6 @@ export const GroupAdminPlugin = definePlugin({
       }
     >();
     const spamRecords = new Map<string, { timestamps: number[]; violationCount: number }>();
-
-    const saveListData = async () => {
-      await mkdir(dirname(listDataPath), { recursive: true });
-      await writeFile(
-        listDataPath,
-        `${JSON.stringify(
-          {
-            blacklistUserIds: [...blacklistedUserIds].sort((a, b) => a - b),
-            whitelistUserIds: [...whitelistedUserIds].sort((a, b) => a - b),
-            forbiddenWords: [...forbiddenWords].sort((a, b) => a.localeCompare(b)),
-            groupSwitches: booleanMapToRecord(groupSwitches),
-            commandSwitches: booleanMapToRecord(commandSwitches),
-            commandFeatureSwitches: commandSwitchMapToRecord(commandFeatureSwitches),
-            silentSwitches: booleanMapToRecord(silentSwitches),
-          },
-          null,
-          2,
-        )}\n`,
-        'utf8',
-      );
-    };
-
-    const listDataReady = (async () => {
-      try {
-        const content = await readFile(listDataPath, 'utf8');
-        const data: unknown = JSON.parse(content);
-        if (!data || typeof data !== 'object') {
-          ctx.logger.warn(`名单数据格式无效：${listDataPath}`);
-          await saveListData();
-          return;
-        }
-
-        addIntegerArrayToSet('blacklistUserIds' in data ? data.blacklistUserIds : undefined, blacklistedUserIds);
-        addIntegerArrayToSet('whitelistUserIds' in data ? data.whitelistUserIds : undefined, whitelistedUserIds);
-        addStringArrayToSet('forbiddenWords' in data ? data.forbiddenWords : undefined, forbiddenWords);
-        addBooleanRecordToMap('groupSwitches' in data ? data.groupSwitches : undefined, groupSwitches);
-        addBooleanRecordToMap('commandSwitches' in data ? data.commandSwitches : undefined, commandSwitches);
-        addCommandSwitchRecordToMap(
-          'commandFeatureSwitches' in data ? data.commandFeatureSwitches : undefined,
-          commandFeatureSwitches,
-        );
-        addBooleanRecordToMap('silentSwitches' in data ? data.silentSwitches : undefined, silentSwitches);
-      } catch (error) {
-        if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
-          ctx.logger.error(`读取名单数据失败：${listDataPath}`, error);
-        }
-      }
-
-      await saveListData();
-    })();
 
     const isGroupEnabled = (groupId: number): boolean => groupSwitches.get(groupId) ?? true;
     const areCommandsEnabled = (groupId: number): boolean => commandSwitches.get(groupId) ?? true;
@@ -681,84 +406,17 @@ export const GroupAdminPlugin = definePlugin({
     };
 
     ctx.logger.info(`已载入插件：group-admin，入群最低 QQ 等级：${minimumAllowedLevel}`);
-    ctx.scheduler.expression(options?.inactiveCleanupCron ?? '0 4 * * *', async () => {
-      try {
-        await listDataReady;
-
-        const { groups } = await ctx.client.get_group_list();
-
-        for (const group of groups) {
-          if (!isGroupEnabled(group.group_id)) {
-            continue;
-          }
-
-          const freeSlots = group.max_member_count - group.member_count;
-          if (freeSlots > inactiveCleanupFreeSlotsThreshold) {
-            continue;
-          }
-
-          const { members } = await ctx.client.get_group_member_list({
-            group_id: group.group_id,
-            no_cache: true,
-          });
-          const targets = members
-            .filter((member) => member.role === 'member' && !whitelistedUserIds.has(member.user_id))
-            .sort((a, b) => a.last_sent_time - b.last_sent_time)
-            .slice(0, inactiveCleanupKickLimit);
-
-          let kickedCount = 0;
-          for (const target of targets) {
-            try {
-              await ctx.client.kick_group_member({
-                group_id: group.group_id,
-                user_id: target.user_id,
-                reject_add_request: false,
-              });
-              kickedCount += 1;
-            } catch (error) {
-              ctx.logger.error(`踢出长期未发言群员失败：群 ${group.group_id}，用户 ${target.user_id}`, error);
-            }
-          }
-
-          ctx.logger.info(
-            `群员清理完成：群 ${group.group_id}，剩余名额 ${freeSlots}，计划踢出 ${targets.length} 人，实际踢出 ${kickedCount} 人`,
-          );
-        }
-      } catch (error) {
-        ctx.logger.error('每日群员清理失败', error);
-      }
-    });
-
-    ctx.scheduler.expression(options?.blacklistCleanupCron ?? '0 3 * * *', async () => {
-      try {
-        await listDataReady;
-
-        if (blacklistedUserIds.size === 0) {
-          return;
-        }
-
-        const { uin } = await ctx.client.get_login_info();
-        const { groups } = await ctx.client.get_group_list();
-
-        for (const group of groups) {
-          if (!isGroupEnabled(group.group_id)) {
-            continue;
-          }
-
-          const { members } = await ctx.client.get_group_member_list({
-            group_id: group.group_id,
-            no_cache: true,
-          });
-
-          for (const member of members) {
-            if (blacklistedUserIds.has(member.user_id) && !whitelistedUserIds.has(member.user_id)) {
-              await kickBlacklistedMember(group.group_id, member.user_id, uin, 'daily');
-            }
-          }
-        }
-      } catch (error) {
-        ctx.logger.error('每日黑名单清理失败', error);
-      }
+    registerScheduledTasks({
+      ctx,
+      inactiveCleanupCron: options?.inactiveCleanupCron,
+      inactiveCleanupFreeSlotsThreshold,
+      inactiveCleanupKickLimit,
+      blacklistCleanupCron: options?.blacklistCleanupCron,
+      listDataReady,
+      isGroupEnabled,
+      whitelistedUserIds,
+      blacklistedUserIds,
+      kickBlacklistedMember,
     });
 
     ctx.router
@@ -1165,235 +823,28 @@ ${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefi
         await replyIfNotSilent(session, msg`已拒绝 ${request.initiatorId} 的入群申请`);
       });
 
-    ctx.on('message_receive', async ({ self_id, data }) => {
-      try {
-        await listDataReady;
-
-        if (data.message_scene !== 'group' || data.sender_id === self_id) {
-          return;
-        }
-
-        if (!isGroupEnabled(data.peer_id)) {
-          return;
-        }
-
-        if (whitelistedUserIds.has(data.sender_id)) {
-          return;
-        }
-
-        if (blacklistedUserIds.has(data.sender_id)) {
-          await kickBlacklistedMember(data.peer_id, data.sender_id, self_id, 'message');
-          return;
-        }
-
-        const messageText = getMessagePlainText(data.segments);
-        if (commandPrefix && messageText.trim().startsWith(commandPrefix) && moderatorUserIds.has(data.sender_id)) {
-          return;
-        }
-
-        if (data.group_member.role !== 'member') {
-          return;
-        }
-
-        if (forbiddenWords.size > 0 && isCommandFeatureEnabled(data.peer_id, 'forbiddenWord')) {
-          const matchedForbiddenWord = [...forbiddenWords].find((word) => messageText.includes(word));
-          if (matchedForbiddenWord) {
-            const { member: botMember } = await ctx.client.get_group_member_info({
-              group_id: data.peer_id,
-              user_id: self_id,
-              no_cache: true,
-            });
-            if (!canBotModerateTarget(botMember.role, data.group_member.role)) {
-              ctx.logger.warn(`违禁词禁言跳过：机器人权限不足，群 ${data.peer_id}，用户 ${data.sender_id}`);
-              return;
-            }
-
-            await ctx.client.set_group_member_mute({
-              group_id: data.peer_id,
-              user_id: data.sender_id,
-              duration: forbiddenWordMuteDurationSeconds,
-            });
-            await sendGroupMessageIfNotSilent(
-              data.peer_id,
-              msg`${seg.mention(data.sender_id)} 触发违禁词，已禁言 ${forbiddenWordMuteDurationSeconds} 秒`,
-            );
-            ctx.logger.info(
-              `已禁言触发违禁词成员：群 ${data.peer_id}，用户 ${data.sender_id}，违禁词 ${matchedForbiddenWord}`,
-            );
-            return;
-          }
-        }
-
-        const key = `${data.peer_id}:${data.sender_id}`;
-        const now = Date.now();
-        const record = spamRecords.get(key) ?? {
-          timestamps: [],
-          violationCount: 0,
-        };
-
-        record.timestamps = record.timestamps.filter((time) => now - time <= spamDetectionWindowMs);
-        for (let index = 0; index < Math.max(1, data.segments.length); index += 1) {
-          record.timestamps.push(now);
-        }
-
-        if (record.timestamps.length < spamDetectionSegmentLimit) {
-          spamRecords.set(key, record);
-          return;
-        }
-
-        record.timestamps = [];
-        record.violationCount += 1;
-
-        if (record.violationCount <= 2) {
-          spamRecords.set(key, record);
-          await sendGroupMessageIfNotSilent(
-            data.peer_id,
-            msg`${seg.mention(data.sender_id)} 请勿刷屏，警告 ${record.violationCount}/2`,
-          );
-          return;
-        }
-
-        spamRecords.delete(key);
-        if (spamAction === 'kick') {
-          await ctx.client.kick_group_member({
-            group_id: data.peer_id,
-            user_id: data.sender_id,
-            reject_add_request: false,
-          });
-          await sendGroupMessageIfNotSilent(data.peer_id, msg`已踢出刷屏成员 ${data.sender_id}`);
-          return;
-        }
-
-        await ctx.client.set_group_member_mute({
-          group_id: data.peer_id,
-          user_id: data.sender_id,
-          duration: spamMuteDurationSeconds,
-        });
-        await sendGroupMessageIfNotSilent(
-          data.peer_id,
-          msg`已禁言刷屏成员 ${data.sender_id} ${spamMuteDurationSeconds} 秒`,
-        );
-      } catch (error) {
-        ctx.logger.error(`刷屏检测处理失败：群 ${data.peer_id}，用户 ${data.sender_id}`, error);
-      }
-    });
-
-    ctx.on('group_member_increase', async ({ self_id, data }) => {
-      await listDataReady;
-
-      if (!isGroupEnabled(data.group_id)) {
-        return;
-      }
-
-      if (!blacklistedUserIds.has(data.user_id) || whitelistedUserIds.has(data.user_id)) {
-        return;
-      }
-
-      await kickBlacklistedMember(data.group_id, data.user_id, self_id, 'join');
-    });
-
-    ctx.on('group_member_decrease', async ({ data }) => {
-      try {
-        await listDataReady;
-
-        if (!isGroupEnabled(data.group_id)) {
-          return;
-        }
-
-        await sendGroupMessageIfNotSilent(
-          data.group_id,
-          data.operator_id
-            ? msg`成员 ${data.user_id} 已被 ${data.operator_id} 移出本群`
-            : msg`成员 ${data.user_id} 已退出本群`,
-        );
-      } catch (error) {
-        ctx.logger.error(`退群通知发送失败：群 ${data.group_id}，用户 ${data.user_id}`, error);
-      }
-    });
-
-    ctx.on('group_join_request', async ({ data }) => {
-      const { group_id, initiator_id, notification_seq, is_filtered, comment } = data;
-
-      try {
-        await listDataReady;
-
-        if (!isGroupEnabled(group_id)) {
-          return;
-        }
-
-        if (whitelistedUserIds.has(initiator_id)) {
-          await ctx.client.accept_group_request({
-            group_id,
-            notification_seq,
-            notification_type: 'join_request',
-            is_filtered,
-          });
-
-          ctx.logger.info(`已自动同意白名单入群请求：群 ${group_id}，用户 ${initiator_id}`);
-          return;
-        }
-
-        if (blacklistedUserIds.has(initiator_id)) {
-          await ctx.client.reject_group_request({
-            group_id,
-            notification_seq,
-            notification_type: 'join_request',
-            is_filtered,
-            reason: blacklistRejectionReason,
-          });
-
-          ctx.logger.info(`已拒绝黑名单入群请求：群 ${group_id}，用户 ${initiator_id}`);
-          return;
-        }
-
-        const profile = await ctx.client.get_user_profile({
-          user_id: initiator_id,
-        });
-
-        if (profile.level >= minimumAllowedLevel) {
-          const notification = await sendGroupMessageIfNotSilent(
-            group_id,
-            msg`收到入群申请
-账号：${initiator_id}
-昵称：${profile.nickname}
-QQ 等级：${profile.level}
-申请信息：${comment || '无'}
-
-回复本消息 y 同意，回复 n 拒绝。`,
-          );
-
-          if (!notification) {
-            ctx.logger.info(
-              `静默模式已跳过入群审核通知：群 ${group_id}，用户 ${initiator_id}，QQ 等级 ${profile.level}`,
-            );
-            return;
-          }
-
-          pendingJoinRequests.set(notification.message_seq, {
-            groupId: group_id,
-            initiatorId: initiator_id,
-            notificationSeq: notification_seq,
-            isFiltered: is_filtered,
-          });
-
-          ctx.logger.info(
-            `已发送入群审核通知：群 ${group_id}，用户 ${initiator_id}，QQ 等级 ${profile.level}，通知消息 ${notification.message_seq}`,
-          );
-          return;
-        }
-
-        await ctx.client.reject_group_request({
-          group_id,
-          notification_seq,
-          notification_type: 'join_request',
-          is_filtered,
-          reason: rejectionReason,
-        });
-
-        ctx.logger.info(`已自动拒绝入群请求：群 ${group_id}，用户 ${initiator_id}，QQ 等级 ${profile.level}`);
-      } catch (error) {
-        ctx.logger.error(`处理入群请求失败：群 ${group_id}，用户 ${initiator_id}`, error);
-      }
+    registerEventHandlers({
+      ctx,
+      commandPrefix,
+      minimumAllowedLevel,
+      rejectionReason,
+      blacklistRejectionReason,
+      spamDetectionWindowMs,
+      spamDetectionSegmentLimit,
+      spamAction,
+      spamMuteDurationSeconds,
+      forbiddenWordMuteDurationSeconds,
+      moderatorUserIds,
+      blacklistedUserIds,
+      whitelistedUserIds,
+      forbiddenWords,
+      pendingJoinRequests,
+      spamRecords,
+      listDataReady,
+      isGroupEnabled,
+      isCommandFeatureEnabled,
+      sendGroupMessageIfNotSilent,
+      kickBlacklistedMember,
     });
   },
 });
