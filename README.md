@@ -15,10 +15,15 @@ pnpm add fraq-plugin-group-admin
 先安装 `SchedulerPlugin`，再安装 `GroupAdminPlugin`。群管插件会注入 `SchedulerService` 来执行每日清理任务。
 
 ```ts
+import { createColoredLogHandler } from '@fraqjs/color-log';
 import { Context } from '@fraqjs/fraq';
 import GroupAdminPlugin, { SchedulerPlugin } from 'fraq-plugin-group-admin';
 
-const ctx = Context.fromUrl(process.env.MILKY_URL ?? 'ws://127.0.0.1:3001');
+const ctx = Context.fromUrl('http://127.0.0.1:30001/', {
+  logHandler: createColoredLogHandler({
+    minLevel: 'debug',
+  }),
+});
 
 ctx.install(SchedulerPlugin);
 ctx.install(GroupAdminPlugin, {
