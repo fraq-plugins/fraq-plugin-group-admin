@@ -13,6 +13,9 @@ export function buildHelpMessage(options: {
 }): string {
   const { groupId, withCommandPrefix, isGroupEnabled, areCommandsEnabled, isSilentEnabled, isCommandFeatureEnabled } =
     options;
+  const formatCommandStatus = ({ key, label }: (typeof groupAdminCommandDefinitions)[number]): string =>
+    `[${groupId === undefined || isCommandFeatureEnabled(groupId, key) ? '√' : 'x'}]${label}`;
+  const commandStatusText = groupAdminCommandDefinitions.map(formatCommandStatus).join('\n');
   const statusText =
     groupId === undefined
       ? ''
@@ -20,10 +23,7 @@ export function buildHelpMessage(options: {
 当前状态
 群管：${isGroupEnabled(groupId) ? '开启' : '关闭'}
 命令：${areCommandsEnabled(groupId) ? '开启' : '关闭'}
-静默：${isSilentEnabled(groupId) ? '开启' : '关闭'}
-单命令：${groupAdminCommandDefinitions
-          .map(({ key, label }) => `${label}${isCommandFeatureEnabled(groupId, key) ? '开' : '关'}`)
-          .join('，')}`;
+静默：${isSilentEnabled(groupId) ? '开启' : '关闭'}`;
 
   return `群管帮助${statusText}
 
@@ -33,6 +33,9 @@ ${withCommandPrefix('命令开')} / ${withCommandPrefix('命令关')}：开启�
 ${withCommandPrefix('命令开')} 名称 / ${withCommandPrefix('命令关')} 名称：开启或关闭单个命令
 ${withCommandPrefix('静默开')} / ${withCommandPrefix('静默关')}：开启或关闭静默模式
 ${withCommandPrefix('一键开')} / ${withCommandPrefix('一键关')}：同时开关群管和命令
+
+更多命令
+${commandStatusText}
 
 名单
 ${withCommandPrefix('添加黑名单')} @成员或QQ号 / ${withCommandPrefix('blacklist-add')} @成员或QQ号
