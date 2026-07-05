@@ -12,6 +12,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 ## Read now
 
 - flightdeck/knowledge/fraq/docs-baseline.md
+- flightdeck/knowledge/fraq/duplicate-command-processes.md
 - flightdeck/knowledge/fraq/mock-version-compat.md
 - flightdeck/knowledge/fraq/title-grant-port.md
 - flightdeck/knowledge/milky/group-join-review.md
@@ -92,6 +93,7 @@ Done:
 - Added npm metadata in `package.json`: `repository`, `homepage`, and `bugs.url` point at `zhongwen-4-fraq-plugins/fraq-plugin-group-admin`.
 - Verified package metadata with JSON inspection, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
 - Diagnosed `D:\bot\fraq-plugins` showing no plugin response: the app installed `fraq-plugin-group-admin` and called `ctx.install(SchedulerPlugin)` / `ctx.install(GroupAdminPlugin, {})`, but `src/index.ts` never imported those symbols. Added `import GroupAdminPlugin, { SchedulerPlugin } from 'fraq-plugin-group-admin';`, removed the unused `param` import, and changed `ctx.start()` to `await ctx.start()`. `pnpm exec tsc --noEmit` passes; `pnpm start` no longer throws and stays running.
+- Diagnosed commands running three times in `D:\bot\fraq-plugins`: three `pnpm start`/`tsx src/index.ts` process chains were connected to the same Milky endpoint. Stopped all duplicate Node processes; restart exactly one copy of the app.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
