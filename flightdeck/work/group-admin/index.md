@@ -6,7 +6,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Next
 
-- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.1.1`.
+- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.2.0`.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -95,6 +95,10 @@ Done:
 - Diagnosed `D:\bot\fraq-plugins` showing no plugin response: the app installed `fraq-plugin-group-admin` and called `ctx.install(SchedulerPlugin)` / `ctx.install(GroupAdminPlugin, {})`, but `src/index.ts` never imported those symbols. Added `import GroupAdminPlugin, { SchedulerPlugin } from 'fraq-plugin-group-admin';`, removed the unused `param` import, and changed `ctx.start()` to `await ctx.start()`. `pnpm exec tsc --noEmit` passes; `pnpm start` no longer throws and stays running.
 - Diagnosed commands running three times in `D:\bot\fraq-plugins`: three `pnpm start`/`tsx src/index.ts` process chains were connected to the same Milky endpoint. Stopped all duplicate Node processes; restart exactly one copy of the app.
 - Moved README English aliases into the command table rows for `blacklist-add`, `whitelist-add`, `kick`, `mute`, and `recall`, removing the separate alias sentence. Verified with `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
+- Added per-group persisted silent mode. `静默开` / `静默关` updates `silentSwitches` in `data/data.json`; when enabled, only `help` and switch command confirmations are sent. Other command replies, spam warnings/punishment notices, leave notices, review replies, and manual join-review notifications are suppressed while moderation actions still run. `help` now shows the silent status.
+- Bumped the package version to `0.2.0` for the silent-mode feature.
+- Restricted `tsconfig.json` `include` to `src`, `test`, and `tsdown.config.ts` so `pnpm check` does not race with `tsdown` cleaning `dist`.
+- Verified silent-mode changes with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.

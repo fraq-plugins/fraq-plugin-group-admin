@@ -14,5 +14,6 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["node"]
-  }
+  },
+  "include": ["src", "test", "tsdown.config.ts"]
 }

@@ -193,6 +193,7 @@ export const GroupAdminPlugin = definePlugin({
     const whitelistedUserIds = new Set(options?.whitelistUserIds ?? []);
     const groupSwitches = new Map<number, boolean>();
     const commandSwitches = new Map<number, boolean>();
+    const silentSwitches = new Map<number, boolean>();
     const listDataPath = './data/data.json';
     const pendingJoinRequests = new Map<
       number,
@@ -215,6 +216,7 @@ export const GroupAdminPlugin = definePlugin({
             whitelistUserIds: [...whitelistedUserIds].sort((a, b) => a - b),
             groupSwitches: booleanMapToRecord(groupSwitches),
             commandSwitches: booleanMapToRecord(commandSwitches),
+            silentSwitches: booleanMapToRecord(silentSwitches),
           },
           null,
           2,
@@ -237,6 +239,7 @@ export const GroupAdminPlugin = definePlugin({
         addIntegerArrayToSet('whitelistUserIds' in data ? data.whitelistUserIds : undefined, whitelistedUserIds);
         addBooleanRecordToMap('groupSwitches' in data ? data.groupSwitches : undefined, groupSwitches);
         addBooleanRecordToMap('commandSwitches' in data ? data.commandSwitches : undefined, commandSwitches);
+        addBooleanRecordToMap('silentSwitches' in data ? data.silentSwitches : undefined, silentSwitches);
       } catch (error) {
         if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
           ctx.logger.error(`读取名单数据失败：${listDataPath}`, error);
@@ -248,6 +251,29 @@ export const GroupAdminPlugin = definePlugin({
 
     const isGroupEnabled = (groupId: number): boolean => groupSwitches.get(groupId) ?? true;
     const areCommandsEnabled = (groupId: number): boolean => commandSwitches.get(groupId) ?? true;
+    const isSilentEnabled = (groupId: number): boolean => silentSwitches.get(groupId) ?? false;
+
+    const replyIfNotSilent = async (session: Session, content: Parameters<Session['reply']>[0]) => {
+      if (session.raw.message_scene === 'group' && isSilentEnabled(session.raw.peer_id)) {
+        return;
+      }
+
+      await session.reply(content);
+    };
+
+    const sendGroupMessageIfNotSilent = async (
+      groupId: number,
+      message: Parameters<typeof ctx.client.send_group_message>[0]['message'],
+    ) => {
+      if (isSilentEnabled(groupId)) {
+        return undefined;
+      }
+
+      return ctx.client.send_group_message({
+        group_id: groupId,
+        message,
+      });
+    };
 
     const canUseGroupAdminCommand = (session: Session): boolean =>
       session.raw.message_scene === 'group' &&
@@ -257,29 +283,33 @@ export const GroupAdminPlugin = definePlugin({
       await listDataReady;
 
       if (session.raw.message_scene !== 'group') {
-        await session.reply(msg`请在群聊中使用群管理命令`);
+        await replyIfNotSilent(session, msg`请在群聊中使用群管理命令`);
         return false;
       }
 
       if (!isGroupEnabled(session.raw.peer_id)) {
-        await session.reply(msg`本群群管已关闭`);
+        await replyIfNotSilent(session, msg`本群群管已关闭`);
         return false;
       }
 
       if (!areCommandsEnabled(session.raw.peer_id)) {
-        await session.reply(msg`本群群管命令已关闭`);
+        await replyIfNotSilent(session, msg`本群群管命令已关闭`);
         return false;
       }
 
       if (!canUseGroupAdminCommand(session)) {
-        await session.reply(msg`你没有权限使用群管理命令`);
+        await replyIfNotSilent(session, msg`你没有权限使用群管理命令`);
         return false;
       }
 
       return true;
     };
 
-    const executeSwitchCommand = async (session: Session, target: 'group' | 'command' | 'all', enabled: boolean) => {
+    const executeSwitchCommand = async (
+      session: Session,
+      target: 'group' | 'command' | 'silent' | 'all',
+      enabled: boolean,
+    ) => {
       await listDataReady;
 
       if (session.raw.message_scene !== 'group') {
@@ -300,9 +330,21 @@ export const GroupAdminPlugin = definePlugin({
         commandSwitches.set(session.raw.peer_id, enabled);
       }
 
+      if (target === 'silent') {
+        silentSwitches.set(session.raw.peer_id, enabled);
+      }
+
       await saveListData();
       await session.reply(
-        msg`已${enabled ? '开启' : '关闭'}${target === 'group' ? '群管' : target === 'command' ? '群管命令' : '群管和命令'}`,
+        msg`已${enabled ? '开启' : '关闭'}${
+          target === 'group'
+            ? '群管'
+            : target === 'command'
+              ? '群管命令'
+              : target === 'silent'
+                ? '静默模式'
+                : '群管和命令'
+        }`,
       );
     };
 
@@ -420,22 +462,22 @@ export const GroupAdminPlugin = definePlugin({
       await listDataReady;
 
       if (session.raw.message_scene !== 'group') {
-        await session.reply(msg`请在群聊中使用撤回命令`);
+        await replyIfNotSilent(session, msg`请在群聊中使用撤回命令`);
         return;
       }
 
       if (!isGroupEnabled(session.raw.peer_id)) {
-        await session.reply(msg`本群群管已关闭`);
+        await replyIfNotSilent(session, msg`本群群管已关闭`);
         return;
       }
 
       if (!areCommandsEnabled(session.raw.peer_id)) {
-        await session.reply(msg`本群群管命令已关闭`);
+        await replyIfNotSilent(session, msg`本群群管命令已关闭`);
         return;
       }
 
       if (!moderatorUserIds.has(session.raw.sender_id) && session.raw.group_member.role === 'member') {
-        await session.reply(msg`你没有权限使用群管理命令`);
+        await replyIfNotSilent(session, msg`你没有权限使用群管理命令`);
         return;
       }
 
@@ -445,7 +487,7 @@ export const GroupAdminPlugin = definePlugin({
         no_cache: true,
       });
       if (botMember.role === 'member') {
-        await session.reply(msg`机器人不是群主或管理员，无法撤回群消息`);
+        await replyIfNotSilent(session, msg`机器人不是群主或管理员，无法撤回群消息`);
         return;
       }
 
@@ -454,12 +496,12 @@ export const GroupAdminPlugin = definePlugin({
       const count = parseRecallCount(segments);
 
       if (!reply && !count) {
-        await session.reply(msg`请提供撤回数量，或回复一条消息后使用撤回`);
+        await replyIfNotSilent(session, msg`请提供撤回数量，或回复一条消息后使用撤回`);
         return;
       }
 
       if (reply && !count && whitelistedUserIds.has(reply.data.sender_id)) {
-        await session.reply(msg`被回复的消息来自白名单用户，不能撤回`);
+        await replyIfNotSilent(session, msg`被回复的消息来自白名单用户，不能撤回`);
         return;
       }
 
@@ -476,12 +518,15 @@ export const GroupAdminPlugin = definePlugin({
         : [reply?.data.message_seq].filter((messageSeq): messageSeq is number => messageSeq !== undefined);
 
       if (messageSeqs.length === 0) {
-        await session.reply(msg`没有找到可撤回的消息`);
+        await replyIfNotSilent(session, msg`没有找到可撤回的消息`);
         return;
       }
 
       const { success, failed } = await recallGroupMessages(session.raw.peer_id, messageSeqs);
-      await session.reply(failed ? msg`已撤回 ${success} 条消息，${failed} 条失败` : msg`已撤回 ${success} 条消息`);
+      await replyIfNotSilent(
+        session,
+        failed ? msg`已撤回 ${success} 条消息，${failed} 条失败` : msg`已撤回 ${success} 条消息`,
+      );
     };
 
     ctx.logger.info(`已载入插件：group-admin，入群最低 QQ 等级：${minimumAllowedLevel}`);
@@ -579,7 +624,7 @@ export const GroupAdminPlugin = definePlugin({
           session.raw.message_scene === 'group'
             ? `\n当前群状态：群管${isGroupEnabled(session.raw.peer_id) ? '开启' : '关闭'}，命令${
                 areCommandsEnabled(session.raw.peer_id) ? '开启' : '关闭'
-              }`
+              }，静默${isSilentEnabled(session.raw.peer_id) ? '开启' : '关闭'}`
             : '';
 
         await session.reply(msg`群管帮助${switchStatus}
@@ -587,6 +632,7 @@ export const GroupAdminPlugin = definePlugin({
 开关：
 群开/群关：开启或关闭自动群管
 命令开/命令关：开启或关闭群管命令
+静默开/静默关：开启或关闭静默模式
 一键开/一键关：同时开关群管和命令
 
 常用：
@@ -629,6 +675,14 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       await executeSwitchCommand(session, 'command', false);
     });
 
+    ctx.router.command('静默开').execute(async (session) => {
+      await executeSwitchCommand(session, 'silent', true);
+    });
+
+    ctx.router.command('静默关').execute(async (session) => {
+      await executeSwitchCommand(session, 'silent', false);
+    });
+
     ctx.router.command('一键开').execute(async (session) => {
       await executeSwitchCommand(session, 'all', true);
     });
@@ -644,22 +698,22 @@ kick、mute、recall、blacklist-add、whitelist-add`);
         await listDataReady;
 
         if (session.raw.message_scene !== 'group') {
-          await session.reply(msg`请在群聊中使用 title 指令`);
+          await replyIfNotSilent(session, msg`请在群聊中使用 title 指令`);
           return;
         }
 
         if (!isGroupEnabled(session.raw.peer_id)) {
-          await session.reply(msg`本群群管已关闭`);
+          await replyIfNotSilent(session, msg`本群群管已关闭`);
           return;
         }
 
         if (!areCommandsEnabled(session.raw.peer_id)) {
-          await session.reply(msg`本群群管命令已关闭`);
+          await replyIfNotSilent(session, msg`本群群管命令已关闭`);
           return;
         }
 
         if (new TextEncoder().encode(title).length > 18) {
-          await session.reply(msg`专属头衔不能超过 18 字节`);
+          await replyIfNotSilent(session, msg`专属头衔不能超过 18 字节`);
           return;
         }
 
@@ -681,18 +735,18 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
         const targetUserId = parseModerationTarget(target);
         if (!targetUserId) {
-          await session.reply(msg`请提供要加入黑名单的账号：添加黑名单 @成员 或 添加黑名单 QQ号`);
+          await replyIfNotSilent(session, msg`请提供要加入黑名单的账号：添加黑名单 @成员 或 添加黑名单 QQ号`);
           return;
         }
 
         if (targetUserId === session.selfId) {
-          await session.reply(msg`不能把机器人加入黑名单`);
+          await replyIfNotSilent(session, msg`不能把机器人加入黑名单`);
           return;
         }
 
         blacklistedUserIds.add(targetUserId);
         await saveListData();
-        await session.reply(msg`已将 ${targetUserId} 加入黑名单`);
+        await replyIfNotSilent(session, msg`已将 ${targetUserId} 加入黑名单`);
       });
 
     ctx.router
@@ -706,13 +760,13 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
         const targetUserId = parseModerationTarget(target);
         if (!targetUserId) {
-          await session.reply(msg`请提供要加入白名单的账号：添加白名单 @成员 或 添加白名单 QQ号`);
+          await replyIfNotSilent(session, msg`请提供要加入白名单的账号：添加白名单 @成员 或 添加白名单 QQ号`);
           return;
         }
 
         whitelistedUserIds.add(targetUserId);
         await saveListData();
-        await session.reply(msg`已将 ${targetUserId} 加入白名单`);
+        await replyIfNotSilent(session, msg`已将 ${targetUserId} 加入白名单`);
       });
 
     ctx.router
@@ -726,17 +780,17 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
         const targetUserId = parseModerationTarget(target);
         if (!targetUserId) {
-          await session.reply(msg`请提供要踢出的成员：踢人 @成员 或 踢人 QQ号`);
+          await replyIfNotSilent(session, msg`请提供要踢出的成员：踢人 @成员 或 踢人 QQ号`);
           return;
         }
 
         if (targetUserId === session.selfId) {
-          await session.reply(msg`不能操作机器人账号`);
+          await replyIfNotSilent(session, msg`不能操作机器人账号`);
           return;
         }
 
         if (whitelistedUserIds.has(targetUserId)) {
-          await session.reply(msg`该成员在白名单中，不能踢出`);
+          await replyIfNotSilent(session, msg`该成员在白名单中，不能踢出`);
           return;
         }
 
@@ -753,7 +807,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           }),
         ]);
         if (!canBotModerateTarget(botMember.role, member.role)) {
-          await session.reply(msg`机器人权限不足，无法踢出该成员`);
+          await replyIfNotSilent(session, msg`机器人权限不足，无法踢出该成员`);
           return;
         }
 
@@ -762,7 +816,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           user_id: targetUserId,
           reject_add_request: false,
         });
-        await session.reply(msg`已踢出成员 ${targetUserId}`);
+        await replyIfNotSilent(session, msg`已踢出成员 ${targetUserId}`);
       });
 
     ctx.router
@@ -776,17 +830,17 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
         const targetUserId = parseModerationTarget(target);
         if (!targetUserId) {
-          await session.reply(msg`请提供要禁言的成员：禁言 @成员 [秒数] 或 禁言 QQ号 [秒数]`);
+          await replyIfNotSilent(session, msg`请提供要禁言的成员：禁言 @成员 [秒数] 或 禁言 QQ号 [秒数]`);
           return;
         }
 
         if (targetUserId === session.selfId) {
-          await session.reply(msg`不能操作机器人账号`);
+          await replyIfNotSilent(session, msg`不能操作机器人账号`);
           return;
         }
 
         if (whitelistedUserIds.has(targetUserId)) {
-          await session.reply(msg`该成员在白名单中，不能禁言`);
+          await replyIfNotSilent(session, msg`该成员在白名单中，不能禁言`);
           return;
         }
 
@@ -803,7 +857,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           }),
         ]);
         if (!canBotModerateTarget(botMember.role, member.role)) {
-          await session.reply(msg`机器人权限不足，无法禁言该成员`);
+          await replyIfNotSilent(session, msg`机器人权限不足，无法禁言该成员`);
           return;
         }
 
@@ -813,7 +867,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           user_id: targetUserId,
           duration,
         });
-        await session.reply(msg`已禁言成员 ${targetUserId} ${duration} 秒`);
+        await replyIfNotSilent(session, msg`已禁言成员 ${targetUserId} ${duration} 秒`);
       });
 
     ctx.router
@@ -869,7 +923,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
         }
 
         if (!reviewerUserIds.has(session.raw.sender_id) && session.raw.group_member.role === 'member') {
-          await session.reply(msg`你没有权限处理入群申请`);
+          await replyIfNotSilent(session, msg`你没有权限处理入群申请`);
           return;
         }
 
@@ -882,7 +936,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
             notification_type: 'join_request',
             is_filtered: request.isFiltered,
           });
-          await session.reply(msg`已同意 ${request.initiatorId} 的入群申请`);
+          await replyIfNotSilent(session, msg`已同意 ${request.initiatorId} 的入群申请`);
           return;
         }
 
@@ -893,7 +947,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           is_filtered: request.isFiltered,
           reason: manualRejectionReason,
         });
-        await session.reply(msg`已拒绝 ${request.initiatorId} 的入群申请`);
+        await replyIfNotSilent(session, msg`已拒绝 ${request.initiatorId} 的入群申请`);
       });
 
     ctx.on('message_receive', async ({ self_id, data }) => {
@@ -947,10 +1001,10 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
         if (record.violationCount <= 2) {
           spamRecords.set(key, record);
-          await ctx.client.send_group_message({
-            group_id: data.peer_id,
-            message: msg`${seg.mention(data.sender_id)} 请勿刷屏，警告 ${record.violationCount}/2`,
-          });
+          await sendGroupMessageIfNotSilent(
+            data.peer_id,
+            msg`${seg.mention(data.sender_id)} 请勿刷屏，警告 ${record.violationCount}/2`,
+          );
           return;
         }
 
@@ -961,10 +1015,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
             user_id: data.sender_id,
             reject_add_request: false,
           });
-          await ctx.client.send_group_message({
-            group_id: data.peer_id,
-            message: msg`已踢出刷屏成员 ${data.sender_id}`,
-          });
+          await sendGroupMessageIfNotSilent(data.peer_id, msg`已踢出刷屏成员 ${data.sender_id}`);
           return;
         }
 
@@ -973,10 +1024,10 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           user_id: data.sender_id,
           duration: spamMuteDurationSeconds,
         });
-        await ctx.client.send_group_message({
-          group_id: data.peer_id,
-          message: msg`已禁言刷屏成员 ${data.sender_id} ${spamMuteDurationSeconds} 秒`,
-        });
+        await sendGroupMessageIfNotSilent(
+          data.peer_id,
+          msg`已禁言刷屏成员 ${data.sender_id} ${spamMuteDurationSeconds} 秒`,
+        );
       } catch (error) {
         ctx.logger.error(`刷屏检测处理失败：群 ${data.peer_id}，用户 ${data.sender_id}`, error);
       }
@@ -1004,12 +1055,12 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           return;
         }
 
-        await ctx.client.send_group_message({
-          group_id: data.group_id,
-          message: data.operator_id
+        await sendGroupMessageIfNotSilent(
+          data.group_id,
+          data.operator_id
             ? msg`成员 ${data.user_id} 已被 ${data.operator_id} 移出本群`
             : msg`成员 ${data.user_id} 已退出本群`,
-        });
+        );
       } catch (error) {
         ctx.logger.error(`退群通知发送失败：群 ${data.group_id}，用户 ${data.user_id}`, error);
       }
@@ -1055,16 +1106,23 @@ kick、mute、recall、blacklist-add、whitelist-add`);
         });
 
         if (profile.level >= minimumAllowedLevel) {
-          const notification = await ctx.client.send_group_message({
+          const notification = await sendGroupMessageIfNotSilent(
             group_id,
-            message: msg`收到入群申请
+            msg`收到入群申请
 账号：${initiator_id}
 昵称：${profile.nickname}
 QQ 等级：${profile.level}
 申请信息：${comment || '无'}
 
 回复本消息 y 同意，回复 n 拒绝。`,
-          });
+          );
+
+          if (!notification) {
+            ctx.logger.info(
+              `静默模式已跳过入群审核通知：群 ${group_id}，用户 ${initiator_id}，QQ 等级 ${profile.level}`,
+            );
+            return;
+          }
 
           pendingJoinRequests.set(notification.message_seq, {
             groupId: group_id,
