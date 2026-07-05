@@ -128,6 +128,7 @@ Blocked/known:
 - Added the project rule to check official Fraq plugins before implementing new features, with `random` noted as an example of existing reusable plugin behavior.
 - Refactored group-admin into a directory-based module with `src/group-admin/index.ts` as the plugin entry and separate files for command definitions, data persistence, event handlers, scheduled tasks, message utilities, and public option types.
 - Added the final-response convention to include a summary report table with file, change content, and line location after each completed task.
+- Committed the `package.json` version bump to `0.6.1` so `pnpm publish` can pass its clean-working-tree check.
 
 ## Open questions
 
