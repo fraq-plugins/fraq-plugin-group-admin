@@ -9,6 +9,7 @@ import {
 } from './command-definitions';
 import { createGroupAdminDataStore } from './data-store';
 import { registerEventHandlers } from './event-handlers';
+import { buildHelpMessage } from './help-message';
 import {
   canBotModerateTarget,
   parseModerationDuration,
@@ -117,11 +118,6 @@ export const GroupAdminPlugin = definePlugin({
       switches.set(commandKey, enabled);
       commandFeatureSwitches.set(groupId, switches);
     };
-
-    const formatCommandFeatureSwitchStatus = (groupId: number): string =>
-      groupAdminCommandDefinitions
-        .map(({ key, label }) => `${label}${isCommandFeatureEnabled(groupId, key) ? '开' : '关'}`)
-        .join('，');
 
     const formatCommandFeatureNames = (): string => groupAdminCommandDefinitions.map(({ label }) => label).join('、');
 
@@ -425,42 +421,16 @@ export const GroupAdminPlugin = definePlugin({
       .execute(async (session) => {
         await listDataReady;
 
-        const switchStatus =
-          session.raw.message_scene === 'group'
-            ? `\n当前群状态：群管${isGroupEnabled(session.raw.peer_id) ? '开启' : '关闭'}，命令${
-                areCommandsEnabled(session.raw.peer_id) ? '开启' : '关闭'
-              }，静默${isSilentEnabled(session.raw.peer_id) ? '开启' : '关闭'}\n命令状态：${formatCommandFeatureSwitchStatus(
-                session.raw.peer_id,
-              )}`
-            : '';
-
-        await session.reply(msg`群管帮助${switchStatus}
-
-开关：
-${withCommandPrefix('群开')}/${withCommandPrefix('群关')}：开启或关闭自动群管
-${withCommandPrefix('命令开')}/${withCommandPrefix('命令关')}：开启或关闭全部群管命令
-${withCommandPrefix('命令开')} 名称/${withCommandPrefix('命令关')} 名称：开启或关闭单个命令
-${withCommandPrefix('静默开')}/${withCommandPrefix('静默关')}：开启或关闭静默模式
-${withCommandPrefix('一键开')}/${withCommandPrefix('一键关')}：同时开关群管和命令
-
-常用：
-${withCommandPrefix('title')} 头衔：设置专属头衔
-${withCommandPrefix('添加黑名单')} @成员/QQ号
-${withCommandPrefix('添加白名单')} @成员/QQ号
-${withCommandPrefix('添加违禁词')} 词语
-${withCommandPrefix('删除违禁词')} 词语
-${withCommandPrefix('踢人')} @成员/QQ号
-${withCommandPrefix('禁言')} @成员/QQ号 [秒数]
-${withCommandPrefix('撤回')} 数量
-${withCommandPrefix('撤回')} @成员/QQ号 数量
-回复消息后发送 ${withCommandPrefix('撤回')} 或 ${withCommandPrefix('撤回')} 数量
-
-入群审核：
-回复审核通知 ${withCommandPrefix('y')} 通过
-回复审核通知 ${withCommandPrefix('n')} 拒绝
-
-英文别名：
-${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefix('recall')}、${withCommandPrefix('blacklist-add')}、${withCommandPrefix('whitelist-add')}、${withCommandPrefix('word-add')}、${withCommandPrefix('word-del')}`);
+        await session.reply(
+          msg`${buildHelpMessage({
+            groupId: session.raw.message_scene === 'group' ? session.raw.peer_id : undefined,
+            withCommandPrefix,
+            isGroupEnabled,
+            areCommandsEnabled,
+            isSilentEnabled,
+            isCommandFeatureEnabled,
+          })}`,
+        );
       });
 
     ctx.router

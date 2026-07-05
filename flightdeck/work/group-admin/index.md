@@ -130,6 +130,7 @@ Blocked/known:
 - Added the final-response convention to include a summary report table with file, change content, and line location after each completed task.
 - Committed the `package.json` version bump to `0.6.1` so `pnpm publish` can pass its clean-working-tree check.
 - Clarified the final-response report convention: list all changed locations, and use `第 x-y 行` for continuous multi-line ranges.
+- Refactored the help command content into `src/group-admin/help-message.ts` and reorganized the visible help output by status, switches, lists, moderation, and other actions.
 
 ## Open questions
 
