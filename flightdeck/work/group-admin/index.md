@@ -119,6 +119,7 @@ Done:
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
+- Publishing `0.5.0` is currently blocked because `npm whoami` reports `ENEEDAUTH`; npm shows `fraq-plugin-group-admin` is owned by `wanjunhui <2401128923@qq.com>` and currently has published versions `0.1.0`, `0.1.1`, and `0.1.2`.
 
 ## Open questions
 
