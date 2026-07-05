@@ -6,6 +6,7 @@
 - Do not extract a literal value into a constant unless that value appears more than once.
 - Before implementing a new feature, if there are unrelated uncommitted changes from earlier turns, commit those changes first in a separate commit.
 - Before implementing a new Fraq feature, first check https://github.com/fraqjs/fraq/tree/main/plugins for an official plugin or reusable implementation; prefer reusing plugin functions over reimplementing behavior locally when it fits.
+- After finishing a task, include a summary report in the final response with columns: `文件 | 修改内容 | 修改位置（行数）`.
 
 <!-- Project house rules + AI-maintenance preferences, in plain prose.
      e.g. "publishing surface is English", "ask before force-pushing". -->
