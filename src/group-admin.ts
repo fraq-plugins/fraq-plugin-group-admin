@@ -146,6 +146,76 @@ function booleanMapToRecord(value: ReadonlyMap<number, boolean>): Record<string,
   return Object.fromEntries([...value.entries()].sort(([left], [right]) => left - right));
 }
 
+type GroupAdminCommandKey = 'title' | 'blacklist' | 'whitelist' | 'kick' | 'mute' | 'recall';
+
+const groupAdminCommandDefinitions: {
+  key: GroupAdminCommandKey;
+  label: string;
+  names: readonly string[];
+}[] = [
+  { key: 'title', label: 'title', names: ['title', '头衔', '专属头衔'] },
+  { key: 'blacklist', label: '添加黑名单', names: ['添加黑名单', '黑名单', 'blacklist-add'] },
+  { key: 'whitelist', label: '添加白名单', names: ['添加白名单', '白名单', 'whitelist-add'] },
+  { key: 'kick', label: '踢人', names: ['踢人', '踢', 'kick'] },
+  { key: 'mute', label: '禁言', names: ['禁言', 'mute'] },
+  { key: 'recall', label: '撤回', names: ['撤回', 'recall'] },
+];
+
+const commandNameMap = new Map(
+  groupAdminCommandDefinitions.flatMap(({ key, names }) =>
+    names.map((name) => [name.toLocaleLowerCase(), key] as const),
+  ),
+);
+
+function parseGroupAdminCommandKey(text: string): GroupAdminCommandKey | undefined {
+  return commandNameMap.get(text.trim().toLocaleLowerCase());
+}
+
+function getGroupAdminCommandLabel(key: GroupAdminCommandKey): string {
+  return groupAdminCommandDefinitions.find((definition) => definition.key === key)?.label ?? key;
+}
+
+function addCommandSwitchRecordToMap(value: unknown, target: Map<number, Map<GroupAdminCommandKey, boolean>>): void {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  for (const [groupIdText, item] of Object.entries(value)) {
+    const groupId = Number(groupIdText);
+    if (!Number.isInteger(groupId) || !item || typeof item !== 'object') {
+      continue;
+    }
+
+    const switches = target.get(groupId) ?? new Map<GroupAdminCommandKey, boolean>();
+    for (const [commandKeyText, enabled] of Object.entries(item)) {
+      if (
+        groupAdminCommandDefinitions.some((definition) => definition.key === commandKeyText) &&
+        typeof enabled === 'boolean'
+      ) {
+        switches.set(commandKeyText as GroupAdminCommandKey, enabled);
+      }
+    }
+
+    target.set(groupId, switches);
+  }
+}
+
+function commandSwitchMapToRecord(
+  value: ReadonlyMap<number, ReadonlyMap<GroupAdminCommandKey, boolean>>,
+): Record<string, Record<GroupAdminCommandKey, boolean>> {
+  return Object.fromEntries(
+    [...value.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([groupId, switches]) => [
+        groupId,
+        Object.fromEntries([...switches.entries()].sort(([left], [right]) => left.localeCompare(right))) as Record<
+          GroupAdminCommandKey,
+          boolean
+        >,
+      ]),
+  );
+}
+
 export interface GroupAdminPluginOptions {
   minimumAllowedLevel?: number;
   rejectionReason?: string;
@@ -193,6 +263,7 @@ export const GroupAdminPlugin = definePlugin({
     const whitelistedUserIds = new Set(options?.whitelistUserIds ?? []);
     const groupSwitches = new Map<number, boolean>();
     const commandSwitches = new Map<number, boolean>();
+    const commandFeatureSwitches = new Map<number, Map<GroupAdminCommandKey, boolean>>();
     const silentSwitches = new Map<number, boolean>();
     const listDataPath = './data/data.json';
     const pendingJoinRequests = new Map<
@@ -216,6 +287,7 @@ export const GroupAdminPlugin = definePlugin({
             whitelistUserIds: [...whitelistedUserIds].sort((a, b) => a - b),
             groupSwitches: booleanMapToRecord(groupSwitches),
             commandSwitches: booleanMapToRecord(commandSwitches),
+            commandFeatureSwitches: commandSwitchMapToRecord(commandFeatureSwitches),
             silentSwitches: booleanMapToRecord(silentSwitches),
           },
           null,
@@ -239,6 +311,10 @@ export const GroupAdminPlugin = definePlugin({
         addIntegerArrayToSet('whitelistUserIds' in data ? data.whitelistUserIds : undefined, whitelistedUserIds);
         addBooleanRecordToMap('groupSwitches' in data ? data.groupSwitches : undefined, groupSwitches);
         addBooleanRecordToMap('commandSwitches' in data ? data.commandSwitches : undefined, commandSwitches);
+        addCommandSwitchRecordToMap(
+          'commandFeatureSwitches' in data ? data.commandFeatureSwitches : undefined,
+          commandFeatureSwitches,
+        );
         addBooleanRecordToMap('silentSwitches' in data ? data.silentSwitches : undefined, silentSwitches);
       } catch (error) {
         if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
@@ -251,6 +327,8 @@ export const GroupAdminPlugin = definePlugin({
 
     const isGroupEnabled = (groupId: number): boolean => groupSwitches.get(groupId) ?? true;
     const areCommandsEnabled = (groupId: number): boolean => commandSwitches.get(groupId) ?? true;
+    const isCommandFeatureEnabled = (groupId: number, commandKey: GroupAdminCommandKey): boolean =>
+      commandFeatureSwitches.get(groupId)?.get(commandKey) ?? true;
     const isSilentEnabled = (groupId: number): boolean => silentSwitches.get(groupId) ?? false;
 
     const replyIfNotSilent = async (session: Session, content: Parameters<Session['reply']>[0]) => {
@@ -279,7 +357,35 @@ export const GroupAdminPlugin = definePlugin({
       session.raw.message_scene === 'group' &&
       (moderatorUserIds.has(session.raw.sender_id) || session.raw.group_member.role !== 'member');
 
-    const ensureCommandAvailable = async (session: Session): Promise<boolean> => {
+    const setCommandFeatureSwitch = (groupId: number, commandKey: GroupAdminCommandKey, enabled: boolean) => {
+      const switches = commandFeatureSwitches.get(groupId) ?? new Map<GroupAdminCommandKey, boolean>();
+      switches.set(commandKey, enabled);
+      commandFeatureSwitches.set(groupId, switches);
+    };
+
+    const formatCommandFeatureSwitchStatus = (groupId: number): string =>
+      groupAdminCommandDefinitions
+        .map(({ key, label }) => `${label}${isCommandFeatureEnabled(groupId, key) ? '开' : '关'}`)
+        .join('，');
+
+    const formatCommandFeatureNames = (): string => groupAdminCommandDefinitions.map(({ label }) => label).join('、');
+
+    const executeCommandFeatureSwitchCommand = async (session: Session, commandName: string, enabled: boolean) => {
+      if (!commandName.trim()) {
+        await executeSwitchCommand(session, 'command', enabled);
+        return;
+      }
+
+      const commandKey = parseGroupAdminCommandKey(commandName);
+      if (!commandKey) {
+        await session.reply(msg`未知命令：${commandName}。可设置：${formatCommandFeatureNames()}`);
+        return;
+      }
+
+      await executeSwitchCommand(session, 'command', enabled, commandKey);
+    };
+
+    const ensureCommandAvailable = async (session: Session, commandKey: GroupAdminCommandKey): Promise<boolean> => {
       await listDataReady;
 
       if (session.raw.message_scene !== 'group') {
@@ -297,6 +403,11 @@ export const GroupAdminPlugin = definePlugin({
         return false;
       }
 
+      if (!isCommandFeatureEnabled(session.raw.peer_id, commandKey)) {
+        await replyIfNotSilent(session, msg`本群 ${getGroupAdminCommandLabel(commandKey)} 命令已关闭`);
+        return false;
+      }
+
       if (!canUseGroupAdminCommand(session)) {
         await replyIfNotSilent(session, msg`你没有权限使用群管理命令`);
         return false;
@@ -309,6 +420,7 @@ export const GroupAdminPlugin = definePlugin({
       session: Session,
       target: 'group' | 'command' | 'silent' | 'all',
       enabled: boolean,
+      commandKey?: GroupAdminCommandKey,
     ) => {
       await listDataReady;
 
@@ -326,7 +438,9 @@ export const GroupAdminPlugin = definePlugin({
         groupSwitches.set(session.raw.peer_id, enabled);
       }
 
-      if (target === 'command' || target === 'all') {
+      if (target === 'command' && commandKey) {
+        setCommandFeatureSwitch(session.raw.peer_id, commandKey, enabled);
+      } else if (target === 'command' || target === 'all') {
         commandSwitches.set(session.raw.peer_id, enabled);
       }
 
@@ -337,13 +451,15 @@ export const GroupAdminPlugin = definePlugin({
       await saveListData();
       await session.reply(
         msg`已${enabled ? '开启' : '关闭'}${
-          target === 'group'
-            ? '群管'
-            : target === 'command'
-              ? '群管命令'
-              : target === 'silent'
-                ? '静默模式'
-                : '群管和命令'
+          target === 'command' && commandKey
+            ? `${getGroupAdminCommandLabel(commandKey)} 命令`
+            : target === 'group'
+              ? '群管'
+              : target === 'command'
+                ? '群管命令'
+                : target === 'silent'
+                  ? '静默模式'
+                  : '群管和命令'
         }`,
       );
     };
@@ -473,6 +589,11 @@ export const GroupAdminPlugin = definePlugin({
 
       if (!areCommandsEnabled(session.raw.peer_id)) {
         await replyIfNotSilent(session, msg`本群群管命令已关闭`);
+        return;
+      }
+
+      if (!isCommandFeatureEnabled(session.raw.peer_id, 'recall')) {
+        await replyIfNotSilent(session, msg`本群 ${getGroupAdminCommandLabel('recall')} 命令已关闭`);
         return;
       }
 
@@ -624,14 +745,17 @@ export const GroupAdminPlugin = definePlugin({
           session.raw.message_scene === 'group'
             ? `\n当前群状态：群管${isGroupEnabled(session.raw.peer_id) ? '开启' : '关闭'}，命令${
                 areCommandsEnabled(session.raw.peer_id) ? '开启' : '关闭'
-              }，静默${isSilentEnabled(session.raw.peer_id) ? '开启' : '关闭'}`
+              }，静默${isSilentEnabled(session.raw.peer_id) ? '开启' : '关闭'}\n命令状态：${formatCommandFeatureSwitchStatus(
+                session.raw.peer_id,
+              )}`
             : '';
 
         await session.reply(msg`群管帮助${switchStatus}
 
 开关：
 群开/群关：开启或关闭自动群管
-命令开/命令关：开启或关闭群管命令
+命令开/命令关：开启或关闭全部群管命令
+命令开 名称/命令关 名称：开启或关闭单个命令
 静默开/静默关：开启或关闭静默模式
 一键开/一键关：同时开关群管和命令
 
@@ -667,9 +791,23 @@ kick、mute、recall、blacklist-add、whitelist-add`);
         await executeSwitchCommand(session, 'group', false);
       });
 
+    ctx.router
+      .command('命令开')
+      .arg('commandName', param.greedy())
+      .execute(async (session, { commandName }) => {
+        await executeCommandFeatureSwitchCommand(session, commandName, true);
+      });
+
     ctx.router.command('命令开').execute(async (session) => {
       await executeSwitchCommand(session, 'command', true);
     });
+
+    ctx.router
+      .command('命令关')
+      .arg('commandName', param.greedy())
+      .execute(async (session, { commandName }) => {
+        await executeCommandFeatureSwitchCommand(session, commandName, false);
+      });
 
     ctx.router.command('命令关').execute(async (session) => {
       await executeSwitchCommand(session, 'command', false);
@@ -712,6 +850,11 @@ kick、mute、recall、blacklist-add、whitelist-add`);
           return;
         }
 
+        if (!isCommandFeatureEnabled(session.raw.peer_id, 'title')) {
+          await replyIfNotSilent(session, msg`本群 ${getGroupAdminCommandLabel('title')} 命令已关闭`);
+          return;
+        }
+
         if (new TextEncoder().encode(title).length > 18) {
           await replyIfNotSilent(session, msg`专属头衔不能超过 18 字节`);
           return;
@@ -729,7 +872,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       .alias('blacklist-add')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
-        if (!(await ensureCommandAvailable(session))) {
+        if (!(await ensureCommandAvailable(session, 'blacklist'))) {
           return;
         }
 
@@ -754,7 +897,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       .alias('whitelist-add')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
-        if (!(await ensureCommandAvailable(session))) {
+        if (!(await ensureCommandAvailable(session, 'whitelist'))) {
           return;
         }
 
@@ -774,7 +917,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       .alias('kick', '踢')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
-        if (!(await ensureCommandAvailable(session))) {
+        if (!(await ensureCommandAvailable(session, 'kick'))) {
           return;
         }
 
@@ -824,7 +967,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       .alias('mute')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
-        if (!(await ensureCommandAvailable(session))) {
+        if (!(await ensureCommandAvailable(session, 'mute'))) {
           return;
         }
 

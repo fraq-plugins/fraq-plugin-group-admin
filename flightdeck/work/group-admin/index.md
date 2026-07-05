@@ -6,7 +6,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Next
 
-- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.2.0`.
+- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.3.0`.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -99,6 +99,10 @@ Done:
 - Bumped the package version to `0.2.0` for the silent-mode feature.
 - Restricted `tsconfig.json` `include` to `src`, `test`, and `tsdown.config.ts` so `pnpm check` does not race with `tsdown` cleaning `dist`.
 - Verified silent-mode changes with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
+- Added per-group per-command switches. `命令开` / `命令关` without arguments still control the global command switch; `命令开 名称` / `命令关 名称` controls `title`, `添加黑名单`, `添加白名单`, `踢人`, `禁言`, or `撤回` by command name or alias. Switch commands and help remain always available so groups cannot lock themselves out.
+- Persisted single-command switch state in `data/data.json` as `commandFeatureSwitches`; missing entries default to enabled for backward compatibility.
+- Bumped the package version to `0.3.0` for the per-command switch feature.
+- Verified per-command switches with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
