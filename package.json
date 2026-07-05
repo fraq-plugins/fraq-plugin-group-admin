@@ -3,6 +3,14 @@
   "version": "0.1.1",
   "description": "Fraq group administration plugin for Milky bots.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhongwen-4-fraq-plugins/fraq-plugin-group-admin.git"
+  },
+  "homepage": "https://github.com/zhongwen-4-fraq-plugins/fraq-plugin-group-admin#readme",
+  "bugs": {
+    "url": "https://github.com/zhongwen-4-fraq-plugins/fraq-plugin-group-admin/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"

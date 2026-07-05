@@ -89,6 +89,8 @@ Done:
 - Verified the README change with `pnpm lint`, `pnpm check`, `pnpm build`, and `npm pack --dry-run`; dry-run includes `README.md` in the npm tarball.
 - Bumped the package version from `0.1.0` to `0.1.1` because npm already has `fraq-plugin-group-admin@0.1.0` and versions cannot be overwritten.
 - Verified `0.1.1` with `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`; `npm publish --access public` reached npm but is blocked by `EOTP`.
+- Added npm metadata in `package.json`: `repository`, `homepage`, and `bugs.url` point at `zhongwen-4-fraq-plugins/fraq-plugin-group-admin`.
+- Verified package metadata with JSON inspection, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
