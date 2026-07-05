@@ -27,6 +27,7 @@ const ctx = Context.fromUrl('http://127.0.0.1:30001/', {
 
 ctx.install(SchedulerPlugin);
 ctx.install(GroupAdminPlugin, {
+  commandPrefix: '/',
   reviewerUserIds: [123456789],
   moderatorUserIds: [123456789],
 });
@@ -37,44 +38,49 @@ await ctx.start();
 ## 功能
 
 - 入群审核：低于最低 QQ 等级的申请自动拒绝，高于阈值的申请发送群内审核通知。
-- 审核回复：管理员或配置的审核员回复审核通知 `y` 同意、`n` 拒绝。
+- 审核回复：管理员或配置的审核员回复审核通知 `/y` 同意、`/n` 拒绝。
 - 容量清理：定时检查群容量，名额不足时踢出长期未发言的普通成员。
 - 刷屏处理：按消息段计数，默认 10 秒内 8 段触发警告，第三次违规禁言或踢出。
 - 退群通知：成员主动退群或被移出时在群内提示。
 - 手动管理：支持踢人、禁言、撤回群消息。
 - 黑名单：可拒绝入群、入群后踢出、发言时踢出，并支持每日扫描。
-- 白名单：保护用户免受踢人、禁言、撤回、刷屏处罚、黑名单处罚和清理任务影响。
-- 群开关：按群持久化开启/关闭自动群管和群管命令。
-- 静默模式：按群关闭除 `help` 和开关确认之外的所有群管提示。
-- 群头衔：`title` 命令设置调用者的群专属头衔。
+- 白名单：保护用户免受踢人、禁言、撤回、刷屏处罚、黑名单处罚和清理任务影响；需要跳过刷屏检测的用户也应放入白名单。
+- 群开关：按群持久化开启/关闭自动群管、全部群管命令和单个命令。
+- 静默模式：按群关闭除 `/help` 和开关确认之外的所有群管提示。
+- 群头衔：`/title` 命令设置调用者的群专属头衔。
 
 ## 命令
 
+以下命令使用默认前缀 `/`。可以通过 `commandPrefix` 修改前缀；配置为空字符串时恢复为无前缀命令。
+
 | 命令 | 说明 |
 | --- | --- |
-| `help` / `帮助` / `菜单` | 查看命令和当前群开关状态 |
-| `群开` / `群管开` | 开启当前群自动群管 |
-| `群关` / `群管关` | 关闭当前群自动群管 |
-| `命令开` | 开启当前群群管命令 |
-| `命令关` | 关闭当前群群管命令 |
-| `静默开` | 开启当前群静默模式 |
-| `静默关` | 关闭当前群静默模式 |
-| `一键开` | 同时开启自动群管和群管命令 |
-| `一键关` | 同时关闭自动群管和群管命令 |
-| `title 头衔` | 设置自己的群专属头衔，最多 18 个 UTF-8 字节 |
-| `添加黑名单 @成员` / `添加黑名单 QQ号` / `blacklist-add @成员或QQ号` | 添加黑名单用户 |
-| `添加白名单 @成员` / `添加白名单 QQ号` / `whitelist-add @成员或QQ号` | 添加白名单用户 |
-| `踢人 @成员` / `踢人 QQ号` / `踢 @成员或QQ号` / `kick @成员或QQ号` | 踢出成员 |
-| `禁言 @成员 [秒数]` / `禁言 QQ号 [秒数]` / `mute @成员或QQ号 [秒数]` | 禁言成员 |
-| `撤回 数量` / `recall 数量` | 撤回命令上方的若干条消息 |
-| `撤回 @成员 数量` / `撤回 QQ号 数量` / `recall @成员或QQ号 数量` | 只撤回指定用户的历史消息 |
-| 回复消息后发送 `撤回` | 撤回被回复的消息 |
-| 回复消息后发送 `撤回 数量` | 从被回复消息开始向上撤回若干条 |
+| `/help` / `/帮助` / `/菜单` | 查看命令和当前群开关状态 |
+| `/群开` / `/群管开` | 开启当前群自动群管 |
+| `/群关` / `/群管关` | 关闭当前群自动群管 |
+| `/命令开` | 开启当前群全部群管命令 |
+| `/命令关` | 关闭当前群全部群管命令 |
+| `/命令开 名称` | 开启当前群指定命令，支持 `/title`、`/添加黑名单`、`/blacklist-add`、`/添加白名单`、`/whitelist-add`、`/踢人`、`/踢`、`/kick`、`/禁言`、`/mute`、`/撤回`、`/recall` |
+| `/命令关 名称` | 关闭当前群指定命令，支持 `/title`、`/添加黑名单`、`/blacklist-add`、`/添加白名单`、`/whitelist-add`、`/踢人`、`/踢`、`/kick`、`/禁言`、`/mute`、`/撤回`、`/recall` |
+| `/静默开` | 开启当前群静默模式 |
+| `/静默关` | 关闭当前群静默模式 |
+| `/一键开` | 同时开启自动群管和群管命令 |
+| `/一键关` | 同时关闭自动群管和群管命令 |
+| `/title 头衔` | 设置自己的群专属头衔，最多 18 个 UTF-8 字节 |
+| `/添加黑名单 @成员` / `/添加黑名单 QQ号` / `/blacklist-add @成员或QQ号` | 添加黑名单用户 |
+| `/添加白名单 @成员` / `/添加白名单 QQ号` / `/whitelist-add @成员或QQ号` | 添加白名单用户 |
+| `/踢人 @成员` / `/踢人 QQ号` / `/踢 @成员或QQ号` / `/kick @成员或QQ号` | 踢出成员 |
+| `/禁言 @成员 [秒数]` / `/禁言 QQ号 [秒数]` / `/mute @成员或QQ号 [秒数]` | 禁言成员 |
+| `/撤回 数量` / `/recall 数量` | 撤回命令上方的若干条消息 |
+| `/撤回 @成员 数量` / `/撤回 QQ号 数量` / `/recall @成员或QQ号 数量` | 只撤回指定用户的历史消息 |
+| 回复消息后发送 `/撤回` | 撤回被回复的消息 |
+| 回复消息后发送 `/撤回 数量` | 从被回复消息开始向上撤回若干条 |
 
 ## 配置
 
 ```ts
 interface GroupAdminPluginOptions {
+  commandPrefix?: string;
   minimumAllowedLevel?: number;
   rejectionReason?: string;
   manualRejectionReason?: string;
@@ -83,13 +89,11 @@ interface GroupAdminPluginOptions {
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;
-  inactiveCleanupGroupIds?: number[];
   spamDetectionWindowMs?: number;
   spamDetectionSegmentLimit?: number;
   spamAction?: 'kick' | 'mute';
   spamMuteDurationSeconds?: number;
   manualMuteDurationSeconds?: number;
-  spamIgnoredUserIds?: number[];
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
   blacklistCleanupCron?: string;
@@ -99,21 +103,20 @@ interface GroupAdminPluginOptions {
 
 | 选项 | 默认值 | 说明 |
 | --- | --- | --- |
+| `commandPrefix` | `/` | 命令前缀，设为空字符串可使用无前缀命令 |
 | `minimumAllowedLevel` | `5` | 入群自动拒绝的最低 QQ 等级阈值，低于该值会拒绝 |
 | `rejectionReason` | `QQ 等级低于 ${minimumAllowedLevel}，暂不允许入群` | 自动拒绝低等级申请时使用的理由 |
-| `manualRejectionReason` | `管理员拒绝入群` | 审核员回复 `n` 时使用的拒绝理由 |
+| `manualRejectionReason` | `管理员拒绝入群` | 审核员回复 `/n` 时使用的拒绝理由 |
 | `reviewerUserIds` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
 | `moderatorUserIds` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
 | `inactiveCleanupCron` | `0 4 * * *` | 容量清理 cron 表达式 |
 | `inactiveCleanupFreeSlotsThreshold` | `9` | 群剩余名额小于等于该值时触发清理 |
 | `inactiveCleanupKickLimit` | `100` | 单群单次最多清理人数 |
-| `inactiveCleanupGroupIds` | 所有群 | 指定容量清理生效的群 |
 | `spamDetectionWindowMs` | `10000` | 刷屏检测窗口，单位毫秒 |
-| `spamDetectionSegmentLimit` | `8` | 窗口内触发刷屏的消息数量 |
+| `spamDetectionSegmentLimit` | `8` | 窗口内触发刷屏的消息段数量 |
 | `spamAction` | `mute` | 第三次刷屏后的处理方式，可选 `mute` 或 `kick` |
 | `spamMuteDurationSeconds` | `600` | 刷屏禁言时长，单位秒 |
 | `manualMuteDurationSeconds` | `spamMuteDurationSeconds` | 手动禁言未传秒数时使用的默认时长 |
-| `spamIgnoredUserIds` | `[]` | 跳过刷屏检测的用户 ID |
 | `blacklistUserIds` | `[]` | 启动时注入的黑名单用户 |
 | `blacklistRejectionReason` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
 | `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
@@ -136,6 +139,7 @@ interface GroupAdminPluginOptions {
 - `whitelistUserIds`
 - `groupSwitches`
 - `commandSwitches`
+- `commandFeatureSwitches`
 - `silentSwitches`
 
 启动时会把配置中的黑白名单和文件中的持久化名单合并，并在命令修改名单或开关后立即写回文件。

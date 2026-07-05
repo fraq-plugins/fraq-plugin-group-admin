@@ -115,6 +115,7 @@ Done:
 - Verified README prefix examples with `pnpm format`, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
 - Rolled README content back to the user-provided earlier command/config examples while leaving runtime code unchanged.
 - Verified the README rollback with `pnpm format`, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
+- Restored README to the prefixed command examples version after the rollback proved to be the wrong target, while keeping the cleaned configuration docs without `inactiveCleanupGroupIds` or `spamIgnoredUserIds`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
