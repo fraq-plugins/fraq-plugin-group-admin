@@ -113,6 +113,8 @@ Done:
 - Verified the cleanup with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
 - Updated README command-switch examples so aliases in `/命令开 名称` / `/命令关 名称` are shown with the default `/` prefix as well.
 - Verified README prefix examples with `pnpm format`, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
+- Rolled README content back to the user-provided earlier command/config examples while leaving runtime code unchanged.
+- Verified the README rollback with `pnpm format`, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
