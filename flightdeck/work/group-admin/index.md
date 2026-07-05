@@ -111,6 +111,8 @@ Done:
 - Removed `inactiveCleanupGroupIds`; use the persisted per-group group-admin switch to control whether a group participates in scheduled cleanup and other automatic moderation.
 - Bumped the package version to `0.5.0` for the configuration cleanup.
 - Verified the cleanup with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
+- Updated README command-switch examples so aliases in `/命令开 名称` / `/命令关 名称` are shown with the default `/` prefix as well.
+- Verified README prefix examples with `pnpm format`, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
