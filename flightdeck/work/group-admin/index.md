@@ -91,6 +91,7 @@ Done:
 - Verified `0.1.1` with `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`; `npm publish --access public` reached npm but is blocked by `EOTP`.
 - Added npm metadata in `package.json`: `repository`, `homepage`, and `bugs.url` point at `zhongwen-4-fraq-plugins/fraq-plugin-group-admin`.
 - Verified package metadata with JSON inspection, `pnpm lint`, `pnpm check`, and `npm pack --dry-run`.
+- Diagnosed `D:\bot\fraq-plugins` showing no plugin response: the app installed `fraq-plugin-group-admin` and called `ctx.install(SchedulerPlugin)` / `ctx.install(GroupAdminPlugin, {})`, but `src/index.ts` never imported those symbols. Added `import GroupAdminPlugin, { SchedulerPlugin } from 'fraq-plugin-group-admin';`, removed the unused `param` import, and changed `ctx.start()` to `await ctx.start()`. `pnpm exec tsc --noEmit` passes; `pnpm start` no longer throws and stays running.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
