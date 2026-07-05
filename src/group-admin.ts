@@ -50,6 +50,13 @@ function parseTextNumbers(segments: milky.IncomingSegment[]): number[] {
     .map(Number);
 }
 
+function getMessagePlainText(segments: milky.IncomingSegment[]): string {
+  return segments
+    .filter((segment) => segment.type === 'text')
+    .map((segment) => segment.data.text)
+    .join('');
+}
+
 function parseRecallTarget(segments: milky.IncomingSegment[]): number | undefined {
   const mention = segments.find((segment) => segment.type === 'mention');
   if (mention) {
@@ -129,6 +136,18 @@ function addIntegerArrayToSet(value: unknown, target: Set<number>): void {
   }
 }
 
+function addStringArrayToSet(value: unknown, target: Set<string>): void {
+  if (!Array.isArray(value)) {
+    return;
+  }
+
+  for (const item of value) {
+    if (typeof item === 'string' && item.trim()) {
+      target.add(item.trim());
+    }
+  }
+}
+
 function addBooleanRecordToMap(value: unknown, target: Map<number, boolean>): void {
   if (!value || typeof value !== 'object') {
     return;
@@ -146,7 +165,7 @@ function booleanMapToRecord(value: ReadonlyMap<number, boolean>): Record<string,
   return Object.fromEntries([...value.entries()].sort(([left], [right]) => left - right));
 }
 
-type GroupAdminCommandKey = 'title' | 'blacklist' | 'whitelist' | 'kick' | 'mute' | 'recall';
+type GroupAdminCommandKey = 'title' | 'blacklist' | 'whitelist' | 'forbiddenWord' | 'kick' | 'mute' | 'recall';
 
 const groupAdminCommandDefinitions: {
   key: GroupAdminCommandKey;
@@ -156,6 +175,7 @@ const groupAdminCommandDefinitions: {
   { key: 'title', label: 'title', names: ['title', '头衔', '专属头衔'] },
   { key: 'blacklist', label: '添加黑名单', names: ['添加黑名单', '黑名单', 'blacklist-add'] },
   { key: 'whitelist', label: '添加白名单', names: ['添加白名单', '白名单', 'whitelist-add'] },
+  { key: 'forbiddenWord', label: '违禁词', names: ['添加违禁词', '删除违禁词', '违禁词', 'word-add', 'word-del'] },
   { key: 'kick', label: '踢人', names: ['踢人', '踢', 'kick'] },
   { key: 'mute', label: '禁言', names: ['禁言', 'mute'] },
   { key: 'recall', label: '撤回', names: ['撤回', 'recall'] },
@@ -231,6 +251,8 @@ export interface GroupAdminPluginOptions {
   spamAction?: 'kick' | 'mute';
   spamMuteDurationSeconds?: number;
   manualMuteDurationSeconds?: number;
+  forbiddenWords?: string[];
+  forbiddenWordMuteDurationSeconds?: number;
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
   blacklistCleanupCron?: string;
@@ -262,6 +284,8 @@ export const GroupAdminPlugin = definePlugin({
     const spamAction = options?.spamAction ?? 'mute';
     const spamMuteDurationSeconds = options?.spamMuteDurationSeconds ?? 600;
     const manualMuteDurationSeconds = options?.manualMuteDurationSeconds ?? spamMuteDurationSeconds;
+    const forbiddenWords = new Set(options?.forbiddenWords?.map((word) => word.trim()).filter(Boolean) ?? []);
+    const forbiddenWordMuteDurationSeconds = options?.forbiddenWordMuteDurationSeconds ?? spamMuteDurationSeconds;
     const blacklistedUserIds = new Set(options?.blacklistUserIds ?? []);
     const blacklistRejectionReason = options?.blacklistRejectionReason ?? '已被加入黑名单';
     const whitelistedUserIds = new Set(options?.whitelistUserIds ?? []);
@@ -289,6 +313,7 @@ export const GroupAdminPlugin = definePlugin({
           {
             blacklistUserIds: [...blacklistedUserIds].sort((a, b) => a - b),
             whitelistUserIds: [...whitelistedUserIds].sort((a, b) => a - b),
+            forbiddenWords: [...forbiddenWords].sort((a, b) => a.localeCompare(b)),
             groupSwitches: booleanMapToRecord(groupSwitches),
             commandSwitches: booleanMapToRecord(commandSwitches),
             commandFeatureSwitches: commandSwitchMapToRecord(commandFeatureSwitches),
@@ -313,6 +338,7 @@ export const GroupAdminPlugin = definePlugin({
 
         addIntegerArrayToSet('blacklistUserIds' in data ? data.blacklistUserIds : undefined, blacklistedUserIds);
         addIntegerArrayToSet('whitelistUserIds' in data ? data.whitelistUserIds : undefined, whitelistedUserIds);
+        addStringArrayToSet('forbiddenWords' in data ? data.forbiddenWords : undefined, forbiddenWords);
         addBooleanRecordToMap('groupSwitches' in data ? data.groupSwitches : undefined, groupSwitches);
         addBooleanRecordToMap('commandSwitches' in data ? data.commandSwitches : undefined, commandSwitches);
         addCommandSwitchRecordToMap(
@@ -763,6 +789,8 @@ ${withCommandPrefix('一键开')}/${withCommandPrefix('一键关')}：同时开�
 ${withCommandPrefix('title')} 头衔：设置专属头衔
 ${withCommandPrefix('添加黑名单')} @成员/QQ号
 ${withCommandPrefix('添加白名单')} @成员/QQ号
+${withCommandPrefix('添加违禁词')} 词语
+${withCommandPrefix('删除违禁词')} 词语
 ${withCommandPrefix('踢人')} @成员/QQ号
 ${withCommandPrefix('禁言')} @成员/QQ号 [秒数]
 ${withCommandPrefix('撤回')} 数量
@@ -774,7 +802,7 @@ ${withCommandPrefix('撤回')} @成员/QQ号 数量
 回复审核通知 ${withCommandPrefix('n')} 拒绝
 
 英文别名：
-${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefix('recall')}、${withCommandPrefix('blacklist-add')}、${withCommandPrefix('whitelist-add')}`);
+${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefix('recall')}、${withCommandPrefix('blacklist-add')}、${withCommandPrefix('whitelist-add')}、${withCommandPrefix('word-add')}、${withCommandPrefix('word-del')}`);
       });
 
     ctx.router
@@ -910,6 +938,50 @@ ${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefi
         whitelistedUserIds.add(targetUserId);
         await saveListData();
         await replyIfNotSilent(session, msg`已将 ${targetUserId} 加入白名单`);
+      });
+
+    ctx.router
+      .command(withCommandPrefix('添加违禁词'))
+      .alias(withCommandPrefix('word-add'))
+      .arg('word', param.greedy())
+      .execute(async (session, { word }) => {
+        if (!(await ensureCommandAvailable(session, 'forbiddenWord'))) {
+          return;
+        }
+
+        const forbiddenWord = word.trim();
+        if (!forbiddenWord) {
+          await replyIfNotSilent(session, msg`请提供要添加的违禁词：添加违禁词 词语`);
+          return;
+        }
+
+        forbiddenWords.add(forbiddenWord);
+        await saveListData();
+        await replyIfNotSilent(session, msg`已添加违禁词：${forbiddenWord}`);
+      });
+
+    ctx.router
+      .command(withCommandPrefix('删除违禁词'))
+      .alias(withCommandPrefix('word-del'))
+      .arg('word', param.greedy())
+      .execute(async (session, { word }) => {
+        if (!(await ensureCommandAvailable(session, 'forbiddenWord'))) {
+          return;
+        }
+
+        const forbiddenWord = word.trim();
+        if (!forbiddenWord) {
+          await replyIfNotSilent(session, msg`请提供要删除的违禁词：删除违禁词 词语`);
+          return;
+        }
+
+        if (!forbiddenWords.delete(forbiddenWord)) {
+          await replyIfNotSilent(session, msg`违禁词不存在：${forbiddenWord}`);
+          return;
+        }
+
+        await saveListData();
+        await replyIfNotSilent(session, msg`已删除违禁词：${forbiddenWord}`);
       });
 
     ctx.router
@@ -1114,8 +1186,42 @@ ${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefi
           return;
         }
 
+        const messageText = getMessagePlainText(data.segments);
+        if (commandPrefix && messageText.trim().startsWith(commandPrefix) && moderatorUserIds.has(data.sender_id)) {
+          return;
+        }
+
         if (data.group_member.role !== 'member') {
           return;
+        }
+
+        if (forbiddenWords.size > 0 && isCommandFeatureEnabled(data.peer_id, 'forbiddenWord')) {
+          const matchedForbiddenWord = [...forbiddenWords].find((word) => messageText.includes(word));
+          if (matchedForbiddenWord) {
+            const { member: botMember } = await ctx.client.get_group_member_info({
+              group_id: data.peer_id,
+              user_id: self_id,
+              no_cache: true,
+            });
+            if (!canBotModerateTarget(botMember.role, data.group_member.role)) {
+              ctx.logger.warn(`违禁词禁言跳过：机器人权限不足，群 ${data.peer_id}，用户 ${data.sender_id}`);
+              return;
+            }
+
+            await ctx.client.set_group_member_mute({
+              group_id: data.peer_id,
+              user_id: data.sender_id,
+              duration: forbiddenWordMuteDurationSeconds,
+            });
+            await sendGroupMessageIfNotSilent(
+              data.peer_id,
+              msg`${seg.mention(data.sender_id)} 触发违禁词，已禁言 ${forbiddenWordMuteDurationSeconds} 秒`,
+            );
+            ctx.logger.info(
+              `已禁言触发违禁词成员：群 ${data.peer_id}，用户 ${data.sender_id}，违禁词 ${matchedForbiddenWord}`,
+            );
+            return;
+          }
         }
 
         const key = `${data.peer_id}:${data.sender_id}`;

@@ -1,6 +1,6 @@
 # fraq-plugin-group-admin
 
-Fraq 的 Milky 群管理插件。它把入群审核、刷屏处理、退群通知、手动踢人/禁言、消息撤回、黑白名单、群管开关和群头衔设置放在一个插件里，并附带一个轻量的定时任务服务。
+Fraq 的 Milky 群管理插件。它把入群审核、刷屏处理、违禁词禁言、退群通知、手动踢人/禁言、消息撤回、黑白名单、群管开关和群头衔设置放在一个插件里，并附带一个轻量的定时任务服务。
 
 ## 安装
 
@@ -41,6 +41,7 @@ await ctx.start();
 - 审核回复：管理员或配置的审核员回复审核通知 `/y` 同意、`/n` 拒绝。
 - 容量清理：定时检查群容量，名额不足时踢出长期未发言的普通成员。
 - 刷屏处理：按消息段计数，默认 10 秒内 8 段触发警告，第三次违规禁言或踢出。
+- 违禁词禁言：普通成员发送包含违禁词的消息时自动禁言，支持命令添加和删除违禁词。
 - 退群通知：成员主动退群或被移出时在群内提示。
 - 手动管理：支持踢人、禁言、撤回群消息。
 - 黑名单：可拒绝入群、入群后踢出、发言时踢出，并支持每日扫描。
@@ -60,8 +61,8 @@ await ctx.start();
 | `/群关` / `/群管关` | 关闭当前群自动群管 |
 | `/命令开` | 开启当前群全部群管命令 |
 | `/命令关` | 关闭当前群全部群管命令 |
-| `/命令开 名称` | 开启当前群指定命令，支持 `/title`、`/添加黑名单`、`/blacklist-add`、`/添加白名单`、`/whitelist-add`、`/踢人`、`/踢`、`/kick`、`/禁言`、`/mute`、`/撤回`、`/recall` |
-| `/命令关 名称` | 关闭当前群指定命令，支持 `/title`、`/添加黑名单`、`/blacklist-add`、`/添加白名单`、`/whitelist-add`、`/踢人`、`/踢`、`/kick`、`/禁言`、`/mute`、`/撤回`、`/recall` |
+| `/命令开 名称` | 开启当前群指定命令，支持 `/title`、`/添加黑名单`、`/blacklist-add`、`/添加白名单`、`/whitelist-add`、`/添加违禁词`、`/删除违禁词`、`/word-add`、`/word-del`、`/踢人`、`/踢`、`/kick`、`/禁言`、`/mute`、`/撤回`、`/recall` |
+| `/命令关 名称` | 关闭当前群指定命令，支持 `/title`、`/添加黑名单`、`/blacklist-add`、`/添加白名单`、`/whitelist-add`、`/添加违禁词`、`/删除违禁词`、`/word-add`、`/word-del`、`/踢人`、`/踢`、`/kick`、`/禁言`、`/mute`、`/撤回`、`/recall` |
 | `/静默开` | 开启当前群静默模式 |
 | `/静默关` | 关闭当前群静默模式 |
 | `/一键开` | 同时开启自动群管和群管命令 |
@@ -69,6 +70,8 @@ await ctx.start();
 | `/title 头衔` | 设置自己的群专属头衔，最多 18 个 UTF-8 字节 |
 | `/添加黑名单 @成员` / `/添加黑名单 QQ号` / `/blacklist-add @成员或QQ号` | 添加黑名单用户 |
 | `/添加白名单 @成员` / `/添加白名单 QQ号` / `/whitelist-add @成员或QQ号` | 添加白名单用户 |
+| `/添加违禁词 词语` / `/word-add 词语` | 添加违禁词 |
+| `/删除违禁词 词语` / `/word-del 词语` | 删除违禁词 |
 | `/踢人 @成员` / `/踢人 QQ号` / `/踢 @成员或QQ号` / `/kick @成员或QQ号` | 踢出成员 |
 | `/禁言 @成员 [秒数]` / `/禁言 QQ号 [秒数]` / `/mute @成员或QQ号 [秒数]` | 禁言成员 |
 | `/撤回 数量` / `/recall 数量` | 撤回命令上方的若干条消息 |
@@ -94,6 +97,8 @@ interface GroupAdminPluginOptions {
   spamAction?: 'kick' | 'mute';
   spamMuteDurationSeconds?: number;
   manualMuteDurationSeconds?: number;
+  forbiddenWords?: string[];
+  forbiddenWordMuteDurationSeconds?: number;
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
   blacklistCleanupCron?: string;
@@ -117,6 +122,8 @@ interface GroupAdminPluginOptions {
 | `spamAction` | `mute` | 第三次刷屏后的处理方式，可选 `mute` 或 `kick` |
 | `spamMuteDurationSeconds` | `600` | 刷屏禁言时长，单位秒 |
 | `manualMuteDurationSeconds` | `spamMuteDurationSeconds` | 手动禁言未传秒数时使用的默认时长 |
+| `forbiddenWords` | `[]` | 启动时注入的违禁词列表 |
+| `forbiddenWordMuteDurationSeconds` | `spamMuteDurationSeconds` | 触发违禁词后的禁言时长，单位秒 |
 | `blacklistUserIds` | `[]` | 启动时注入的黑名单用户 |
 | `blacklistRejectionReason` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
 | `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
@@ -137,6 +144,7 @@ interface GroupAdminPluginOptions {
 
 - `blacklistUserIds`
 - `whitelistUserIds`
+- `forbiddenWords`
 - `groupSwitches`
 - `commandSwitches`
 - `commandFeatureSwitches`
