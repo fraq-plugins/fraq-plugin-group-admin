@@ -44,7 +44,7 @@ await ctx.start();
 - 退群通知：成员主动退群或被移出时在群内提示。
 - 手动管理：支持踢人、禁言、撤回群消息。
 - 黑名单：可拒绝入群、入群后踢出、发言时踢出，并支持每日扫描。
-- 白名单：保护用户免受踢人、禁言、撤回、刷屏处罚、黑名单处罚和清理任务影响。
+- 白名单：保护用户免受踢人、禁言、撤回、刷屏处罚、黑名单处罚和清理任务影响；需要跳过刷屏检测的用户也应放入白名单。
 - 群开关：按群持久化开启/关闭自动群管、全部群管命令和单个命令。
 - 静默模式：按群关闭除 `help` 和开关确认之外的所有群管提示。
 - 群头衔：`title` 命令设置调用者的群专属头衔。
@@ -89,13 +89,11 @@ interface GroupAdminPluginOptions {
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;
-  inactiveCleanupGroupIds?: number[];
   spamDetectionWindowMs?: number;
   spamDetectionSegmentLimit?: number;
   spamAction?: 'kick' | 'mute';
   spamMuteDurationSeconds?: number;
   manualMuteDurationSeconds?: number;
-  spamIgnoredUserIds?: number[];
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
   blacklistCleanupCron?: string;
@@ -114,13 +112,11 @@ interface GroupAdminPluginOptions {
 | `inactiveCleanupCron` | `0 4 * * *` | 容量清理 cron 表达式 |
 | `inactiveCleanupFreeSlotsThreshold` | `9` | 群剩余名额小于等于该值时触发清理 |
 | `inactiveCleanupKickLimit` | `100` | 单群单次最多清理人数 |
-| `inactiveCleanupGroupIds` | 所有群 | 指定容量清理生效的群 |
 | `spamDetectionWindowMs` | `10000` | 刷屏检测窗口，单位毫秒 |
 | `spamDetectionSegmentLimit` | `8` | 窗口内触发刷屏的消息段数量 |
 | `spamAction` | `mute` | 第三次刷屏后的处理方式，可选 `mute` 或 `kick` |
 | `spamMuteDurationSeconds` | `600` | 刷屏禁言时长，单位秒 |
 | `manualMuteDurationSeconds` | `spamMuteDurationSeconds` | 手动禁言未传秒数时使用的默认时长 |
-| `spamIgnoredUserIds` | `[]` | 跳过刷屏检测的用户 ID |
 | `blacklistUserIds` | `[]` | 启动时注入的黑名单用户 |
 | `blacklistRejectionReason` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
 | `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |

@@ -19,7 +19,7 @@ Group-admin plugin implementation and reusable package structure for the Fraq bo
 - group-admin/help - `help`/`帮助`/`菜单` shows commands and current group switch status.
 
 ## Next
-- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.4.0`.
+- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.5.0`.
 - Choose the next group-admin moderation feature or group-specific configuration.
 
 ## Open questions

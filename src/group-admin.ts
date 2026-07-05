@@ -226,13 +226,11 @@ export interface GroupAdminPluginOptions {
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;
-  inactiveCleanupGroupIds?: number[];
   spamDetectionWindowMs?: number;
   spamDetectionSegmentLimit?: number;
   spamAction?: 'kick' | 'mute';
   spamMuteDurationSeconds?: number;
   manualMuteDurationSeconds?: number;
-  spamIgnoredUserIds?: number[];
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
   blacklistCleanupCron?: string;
@@ -257,10 +255,8 @@ export const GroupAdminPlugin = definePlugin({
     const manualRejectionReason = options?.manualRejectionReason ?? '管理员拒绝入群';
     const reviewerUserIds = new Set(options?.reviewerUserIds ?? []);
     const moderatorUserIds = new Set(options?.moderatorUserIds ?? options?.reviewerUserIds ?? []);
-    const inactiveCleanupGroupIds = options?.inactiveCleanupGroupIds && new Set(options.inactiveCleanupGroupIds);
     const inactiveCleanupFreeSlotsThreshold = options?.inactiveCleanupFreeSlotsThreshold ?? 9;
     const inactiveCleanupKickLimit = options?.inactiveCleanupKickLimit ?? 100;
-    const spamIgnoredUserIds = new Set(options?.spamIgnoredUserIds ?? []);
     const spamDetectionWindowMs = options?.spamDetectionWindowMs ?? 10_000;
     const spamDetectionSegmentLimit = options?.spamDetectionSegmentLimit ?? 8;
     const spamAction = options?.spamAction ?? 'mute';
@@ -667,10 +663,6 @@ export const GroupAdminPlugin = definePlugin({
 
         for (const group of groups) {
           if (!isGroupEnabled(group.group_id)) {
-            continue;
-          }
-
-          if (inactiveCleanupGroupIds && !inactiveCleanupGroupIds.has(group.group_id)) {
             continue;
           }
 
@@ -1123,10 +1115,6 @@ ${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefi
         }
 
         if (data.group_member.role !== 'member') {
-          return;
-        }
-
-        if (spamIgnoredUserIds.has(data.sender_id)) {
           return;
         }
 

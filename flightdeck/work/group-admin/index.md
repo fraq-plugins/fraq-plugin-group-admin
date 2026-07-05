@@ -6,7 +6,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Next
 
-- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.4.0`.
+- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.5.0`.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -107,6 +107,10 @@ Done:
 - Updated README command examples to use the default `/` prefix and documented `commandPrefix`.
 - Bumped the package version to `0.4.0` for the command-prefix feature.
 - Verified command-prefix changes with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
+- Removed `spamIgnoredUserIds`; users that should skip spam checks should be placed in `whitelistUserIds` / the persisted whitelist, which already protects them from spam punishments.
+- Removed `inactiveCleanupGroupIds`; use the persisted per-group group-admin switch to control whether a group participates in scheduled cleanup and other automatic moderation.
+- Bumped the package version to `0.5.0` for the configuration cleanup.
+- Verified the cleanup with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
