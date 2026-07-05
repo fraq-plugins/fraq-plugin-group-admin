@@ -6,7 +6,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 
 ## Next
 
-- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.3.0`.
+- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.4.0`.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -103,6 +103,10 @@ Done:
 - Persisted single-command switch state in `data/data.json` as `commandFeatureSwitches`; missing entries default to enabled for backward compatibility.
 - Bumped the package version to `0.3.0` for the per-command switch feature.
 - Verified per-command switches with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
+- Added configurable command prefix. `GroupAdminPluginOptions.commandPrefix` defaults to `/`; all registered router commands, aliases, reply-aware recall patterns, and review decisions are prefixed. Setting `commandPrefix: ''` restores no-prefix commands.
+- Updated README command examples to use the default `/` prefix and documented `commandPrefix`.
+- Bumped the package version to `0.4.0` for the command-prefix feature.
+- Verified command-prefix changes with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run`.
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.

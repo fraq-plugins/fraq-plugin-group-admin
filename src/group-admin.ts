@@ -217,6 +217,7 @@ function commandSwitchMapToRecord(
 }
 
 export interface GroupAdminPluginOptions {
+  commandPrefix?: string;
   minimumAllowedLevel?: number;
   rejectionReason?: string;
   manualRejectionReason?: string;
@@ -244,6 +245,13 @@ export const GroupAdminPlugin = definePlugin({
     scheduler: SchedulerService,
   },
   apply(ctx, options?: GroupAdminPluginOptions) {
+    const commandPrefix = options?.commandPrefix ?? '/';
+    const withCommandPrefix = (name: string): string => `${commandPrefix}${name}`;
+    const prefixedCommandNames = (names: readonly string[]): string[] => names.map(withCommandPrefix);
+    const parseConfiguredCommandKey = (text: string): GroupAdminCommandKey | undefined =>
+      parseGroupAdminCommandKey(
+        commandPrefix && text.startsWith(commandPrefix) ? text.slice(commandPrefix.length) : text,
+      );
     const minimumAllowedLevel = options?.minimumAllowedLevel ?? 5;
     const rejectionReason = options?.rejectionReason ?? `QQ 等级低于 ${minimumAllowedLevel}，暂不允许入群`;
     const manualRejectionReason = options?.manualRejectionReason ?? '管理员拒绝入群';
@@ -376,7 +384,7 @@ export const GroupAdminPlugin = definePlugin({
         return;
       }
 
-      const commandKey = parseGroupAdminCommandKey(commandName);
+      const commandKey = parseConfiguredCommandKey(commandName);
       if (!commandKey) {
         await session.reply(msg`未知命令：${commandName}。可设置：${formatCommandFeatureNames()}`);
         return;
@@ -736,8 +744,8 @@ export const GroupAdminPlugin = definePlugin({
     });
 
     ctx.router
-      .command('help')
-      .alias('帮助', '菜单')
+      .command(withCommandPrefix('help'))
+      .alias(...prefixedCommandNames(['帮助', '菜单']))
       .execute(async (session) => {
         await listDataReady;
 
@@ -753,84 +761,84 @@ export const GroupAdminPlugin = definePlugin({
         await session.reply(msg`群管帮助${switchStatus}
 
 开关：
-群开/群关：开启或关闭自动群管
-命令开/命令关：开启或关闭全部群管命令
-命令开 名称/命令关 名称：开启或关闭单个命令
-静默开/静默关：开启或关闭静默模式
-一键开/一键关：同时开关群管和命令
+${withCommandPrefix('群开')}/${withCommandPrefix('群关')}：开启或关闭自动群管
+${withCommandPrefix('命令开')}/${withCommandPrefix('命令关')}：开启或关闭全部群管命令
+${withCommandPrefix('命令开')} 名称/${withCommandPrefix('命令关')} 名称：开启或关闭单个命令
+${withCommandPrefix('静默开')}/${withCommandPrefix('静默关')}：开启或关闭静默模式
+${withCommandPrefix('一键开')}/${withCommandPrefix('一键关')}：同时开关群管和命令
 
 常用：
-title 头衔：设置专属头衔
-添加黑名单 @成员/QQ号
-添加白名单 @成员/QQ号
-踢人 @成员/QQ号
-禁言 @成员/QQ号 [秒数]
-撤回 数量
-撤回 @成员/QQ号 数量
-回复消息后发送 撤回 或 撤回 数量
+${withCommandPrefix('title')} 头衔：设置专属头衔
+${withCommandPrefix('添加黑名单')} @成员/QQ号
+${withCommandPrefix('添加白名单')} @成员/QQ号
+${withCommandPrefix('踢人')} @成员/QQ号
+${withCommandPrefix('禁言')} @成员/QQ号 [秒数]
+${withCommandPrefix('撤回')} 数量
+${withCommandPrefix('撤回')} @成员/QQ号 数量
+回复消息后发送 ${withCommandPrefix('撤回')} 或 ${withCommandPrefix('撤回')} 数量
 
 入群审核：
-回复审核通知 y 通过
-回复审核通知 n 拒绝
+回复审核通知 ${withCommandPrefix('y')} 通过
+回复审核通知 ${withCommandPrefix('n')} 拒绝
 
 英文别名：
-kick、mute、recall、blacklist-add、whitelist-add`);
+${withCommandPrefix('kick')}、${withCommandPrefix('mute')}、${withCommandPrefix('recall')}、${withCommandPrefix('blacklist-add')}、${withCommandPrefix('whitelist-add')}`);
       });
 
     ctx.router
-      .command('群开')
-      .alias('群管开')
+      .command(withCommandPrefix('群开'))
+      .alias(withCommandPrefix('群管开'))
       .execute(async (session) => {
         await executeSwitchCommand(session, 'group', true);
       });
 
     ctx.router
-      .command('群关')
-      .alias('群管关')
+      .command(withCommandPrefix('群关'))
+      .alias(withCommandPrefix('群管关'))
       .execute(async (session) => {
         await executeSwitchCommand(session, 'group', false);
       });
 
     ctx.router
-      .command('命令开')
+      .command(withCommandPrefix('命令开'))
       .arg('commandName', param.greedy())
       .execute(async (session, { commandName }) => {
         await executeCommandFeatureSwitchCommand(session, commandName, true);
       });
 
-    ctx.router.command('命令开').execute(async (session) => {
+    ctx.router.command(withCommandPrefix('命令开')).execute(async (session) => {
       await executeSwitchCommand(session, 'command', true);
     });
 
     ctx.router
-      .command('命令关')
+      .command(withCommandPrefix('命令关'))
       .arg('commandName', param.greedy())
       .execute(async (session, { commandName }) => {
         await executeCommandFeatureSwitchCommand(session, commandName, false);
       });
 
-    ctx.router.command('命令关').execute(async (session) => {
+    ctx.router.command(withCommandPrefix('命令关')).execute(async (session) => {
       await executeSwitchCommand(session, 'command', false);
     });
 
-    ctx.router.command('静默开').execute(async (session) => {
+    ctx.router.command(withCommandPrefix('静默开')).execute(async (session) => {
       await executeSwitchCommand(session, 'silent', true);
     });
 
-    ctx.router.command('静默关').execute(async (session) => {
+    ctx.router.command(withCommandPrefix('静默关')).execute(async (session) => {
       await executeSwitchCommand(session, 'silent', false);
     });
 
-    ctx.router.command('一键开').execute(async (session) => {
+    ctx.router.command(withCommandPrefix('一键开')).execute(async (session) => {
       await executeSwitchCommand(session, 'all', true);
     });
 
-    ctx.router.command('一键关').execute(async (session) => {
+    ctx.router.command(withCommandPrefix('一键关')).execute(async (session) => {
       await executeSwitchCommand(session, 'all', false);
     });
 
     ctx.router
-      .command('title')
+      .command(withCommandPrefix('title'))
       .arg('title', param.greedy())
       .execute(async (session, { title }) => {
         await listDataReady;
@@ -868,8 +876,8 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       });
 
     ctx.router
-      .command('添加黑名单')
-      .alias('blacklist-add')
+      .command(withCommandPrefix('添加黑名单'))
+      .alias(withCommandPrefix('blacklist-add'))
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'blacklist'))) {
@@ -893,8 +901,8 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       });
 
     ctx.router
-      .command('添加白名单')
-      .alias('whitelist-add')
+      .command(withCommandPrefix('添加白名单'))
+      .alias(withCommandPrefix('whitelist-add'))
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'whitelist'))) {
@@ -913,8 +921,8 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       });
 
     ctx.router
-      .command('踢人')
-      .alias('kick', '踢')
+      .command(withCommandPrefix('踢人'))
+      .alias(...prefixedCommandNames(['kick', '踢']))
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'kick'))) {
@@ -963,8 +971,8 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       });
 
     ctx.router
-      .command('禁言')
-      .alias('mute')
+      .command(withCommandPrefix('禁言'))
+      .alias(withCommandPrefix('mute'))
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'mute'))) {
@@ -1014,8 +1022,8 @@ kick、mute、recall、blacklist-add、whitelist-add`);
       });
 
     ctx.router
-      .command('撤回')
-      .alias('recall')
+      .command(withCommandPrefix('撤回'))
+      .alias(withCommandPrefix('recall'))
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         await executeRecallCommand(session, target);
@@ -1023,7 +1031,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
     ctx.router
       .rawPattern()
-      .arg('command', param.union('撤回', 'recall'))
+      .arg('command', param.union(withCommandPrefix('撤回'), withCommandPrefix('recall')))
       .execute(async (session) => {
         await executeRecallCommand(session, []);
       });
@@ -1031,7 +1039,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
     ctx.router
       .rawPattern()
       .arg('reply', param.segment('reply'))
-      .arg('command', param.union('撤回', 'recall'))
+      .arg('command', param.union(withCommandPrefix('撤回'), withCommandPrefix('recall')))
       .arg('target', param.catchAll())
       .execute(async (session, { reply, target }) => {
         await executeRecallCommand(session, [reply, ...target]);
@@ -1040,7 +1048,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
     ctx.router
       .rawPattern()
       .arg('reply', param.segment('reply'))
-      .arg('command', param.union('撤回', 'recall'))
+      .arg('command', param.union(withCommandPrefix('撤回'), withCommandPrefix('recall')))
       .execute(async (session, { reply }) => {
         await executeRecallCommand(session, [reply]);
       });
@@ -1048,7 +1056,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
     ctx.router
       .rawPattern()
       .arg('reply', param.segment('reply'))
-      .arg('decision', param.union('y', 'n'))
+      .arg('decision', param.union(withCommandPrefix('y'), withCommandPrefix('n')))
       .execute(async (session, { reply, decision }) => {
         await listDataReady;
 
@@ -1072,7 +1080,7 @@ kick、mute、recall、blacklist-add、whitelist-add`);
 
         pendingJoinRequests.delete(reply.data.message_seq);
 
-        if (decision === 'y') {
+        if (decision === withCommandPrefix('y')) {
           await ctx.client.accept_group_request({
             group_id: request.groupId,
             notification_seq: request.notificationSeq,
