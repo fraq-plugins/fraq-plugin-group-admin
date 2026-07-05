@@ -5,6 +5,7 @@
 - Commit messages for every new feature or bug fix must follow https://gitmoji.js.org/: use the relevant emoji plus a concise Chinese description of what was added or fixed, for example `✨ 添加消息转发功能` or `🐛 修复空消息处理`.
 - Do not extract a literal value into a constant unless that value appears more than once.
 - Before implementing a new feature, if there are unrelated uncommitted changes from earlier turns, commit those changes first in a separate commit.
+- Before implementing a new Fraq feature, first check https://github.com/fraqjs/fraq/tree/main/plugins for an official plugin or reusable implementation; prefer reusing plugin functions over reimplementing behavior locally when it fits.
 
 <!-- Project house rules + AI-maintenance preferences, in plain prose.
      e.g. "publishing surface is English", "ask before force-pushing". -->

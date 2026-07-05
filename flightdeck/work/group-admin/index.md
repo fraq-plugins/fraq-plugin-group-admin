@@ -14,6 +14,7 @@ Implemented the first group-admin features: automatically reject direct group jo
 - flightdeck/knowledge/fraq/docs-baseline.md
 - flightdeck/knowledge/fraq/duplicate-command-processes.md
 - flightdeck/knowledge/fraq/mock-version-compat.md
+- flightdeck/knowledge/fraq/plugin-reuse-first.md
 - flightdeck/knowledge/fraq/title-grant-port.md
 - flightdeck/knowledge/milky/group-join-review.md
 - flightdeck/knowledge/milky/group-message-moderation.md
@@ -121,6 +122,7 @@ Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
 - Publishing `0.5.0` is currently blocked because `npm whoami` reports `ENEEDAUTH`; npm shows `fraq-plugin-group-admin` is owned by `wanjunhui <2401128923@qq.com>` and currently has published versions `0.1.0`, `0.1.1`, and `0.1.2`.
 - Added forbidden-word moderation for `0.6.0`: persisted `forbiddenWords`, configurable `forbiddenWordMuteDurationSeconds`, `/添加违禁词` and `/删除违禁词` commands with `word-add`/`word-del` aliases, and automatic mute when ordinary non-whitelisted members send matching text.
+- Added the project rule to check official Fraq plugins before implementing new features, with `random` noted as an example of existing reusable plugin behavior.
 
 ## Open questions
 
