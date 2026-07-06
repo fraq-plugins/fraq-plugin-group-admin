@@ -11,6 +11,7 @@ import { createGroupAdminDataStore } from './data-store';
 import { registerEventHandlers } from './event-handlers';
 import { classifyRootGroupFiles } from './group-file-classification';
 import { buildHelpMessageSections } from './help-message';
+import { checkGroupMemberCards, type GroupMemberCardManagementOptions } from './member-card-management';
 import {
   canBotModerateTarget,
   parseModerationDuration,
@@ -61,6 +62,7 @@ export const GroupAdminPlugin = definePlugin({
       commandSwitches,
       commandFeatureSwitches,
       silentSwitches,
+      memberCardSnapshots,
       ready: listDataReady,
       save: saveListData,
     } = dataStore;
@@ -80,6 +82,13 @@ export const GroupAdminPlugin = definePlugin({
     const isCommandFeatureEnabled = (groupId: number, commandKey: GroupAdminCommandKey): boolean =>
       commandFeatureSwitches.get(groupId)?.get(commandKey) ?? true;
     const isSilentEnabled = (groupId: number): boolean => silentSwitches.get(groupId) ?? false;
+    const groupMemberCardManagement: GroupMemberCardManagementOptions = {
+      enabled: options?.groupMemberCardManagementEnabled ?? false,
+      ruleScope: options?.groupMemberCardRuleScope ?? 'global',
+      pattern: options?.groupMemberCardPattern,
+      groupPatterns: options?.groupMemberCardGroupPatterns,
+      violationAction: options?.groupMemberCardViolationAction ?? 'notify',
+    };
 
     const replyIfNotSilent = async (session: Session, content: Parameters<Session['reply']>[0]) => {
       if (session.raw.message_scene === 'group' && isSilentEnabled(session.raw.peer_id)) {
@@ -420,6 +429,26 @@ export const GroupAdminPlugin = definePlugin({
       await replyIfNotSilent(session, msg`群文件分类完成：移动 ${moved} 个，跳过 ${skipped} 个，失败 ${failed} 个`);
     };
 
+    const executeGroupMemberCardCheckCommand = async (session: Session) => {
+      if (!(await ensureCommandAvailable(session, 'memberCard'))) {
+        return;
+      }
+
+      const result = await checkGroupMemberCards({
+        ctx,
+        groupId: session.raw.peer_id,
+        botUserId: session.selfId,
+        cardSnapshots: memberCardSnapshots,
+        management: groupMemberCardManagement,
+        notify: (message) => sendGroupMessageIfNotSilent(session.raw.peer_id, message).then(() => undefined),
+      });
+      await saveListData();
+      await replyIfNotSilent(
+        session,
+        msg`群名片检查完成：检查 ${result.checked} 人，改动 ${result.changed} 人，违规 ${result.invalid} 人，恢复 ${result.reset} 人，失败 ${result.failed} 人`,
+      );
+    };
+
     ctx.logger.info(`已载入插件：group-admin，入群最低 QQ 等级：${minimumAllowedLevel}`);
     registerScheduledTasks({
       ctx,
@@ -431,6 +460,10 @@ export const GroupAdminPlugin = definePlugin({
       groupFileClassificationCron: options?.groupFileClassificationCron,
       groupFileClassificationCategories: options?.groupFileClassificationCategories,
       groupFileClassificationFallbackFolderName: options?.groupFileClassificationFallbackFolderName,
+      groupMemberCardManagement,
+      groupMemberCardCheckCron: options?.groupMemberCardCheckCron,
+      memberCardSnapshots,
+      saveListData,
       blacklistCleanupCron: options?.blacklistCleanupCron,
       listDataReady,
       isGroupEnabled,
@@ -565,6 +598,13 @@ export const GroupAdminPlugin = definePlugin({
       .alias('群文件分类', 'file-classify')
       .execute(async (session) => {
         await executeGroupFileClassificationCommand(session);
+      });
+
+    ctx.router
+      .command('名片检查')
+      .alias('群名片检查', 'card-check')
+      .execute(async (session) => {
+        await executeGroupMemberCardCheckCommand(session);
       });
 
     ctx.router
@@ -850,9 +890,12 @@ export const GroupAdminPlugin = definePlugin({
       blacklistedUserIds,
       whitelistedUserIds,
       forbiddenWords,
+      memberCardSnapshots,
+      groupMemberCardManagement,
       pendingJoinRequests,
       spamRecords,
       listDataReady,
+      saveListData,
       isGroupEnabled,
       isCommandFeatureEnabled,
       sendGroupMessageIfNotSilent,

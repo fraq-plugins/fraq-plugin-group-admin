@@ -18,8 +18,45 @@ export interface GroupAdminDataStore {
   commandSwitches: Map<number, boolean>;
   commandFeatureSwitches: Map<number, Map<GroupAdminCommandKey, boolean>>;
   silentSwitches: Map<number, boolean>;
+  memberCardSnapshots: Map<number, Map<number, string>>;
   ready: Promise<void>;
   save: () => Promise<void>;
+}
+
+function addMemberCardSnapshotRecord(value: unknown, target: Map<number, Map<number, string>>): void {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  for (const [groupIdText, item] of Object.entries(value)) {
+    const groupId = Number(groupIdText);
+    if (!Number.isInteger(groupId) || !item || typeof item !== 'object') {
+      continue;
+    }
+
+    const groupCards = target.get(groupId) ?? new Map<number, string>();
+    for (const [userIdText, card] of Object.entries(item)) {
+      const userId = Number(userIdText);
+      if (Number.isInteger(userId) && typeof card === 'string') {
+        groupCards.set(userId, card);
+      }
+    }
+
+    target.set(groupId, groupCards);
+  }
+}
+
+function memberCardSnapshotMapToRecord(
+  value: ReadonlyMap<number, ReadonlyMap<number, string>>,
+): Record<string, Record<string, string>> {
+  return Object.fromEntries(
+    [...value.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([groupId, groupCards]) => [
+        groupId,
+        Object.fromEntries([...groupCards.entries()].sort(([left], [right]) => left - right)),
+      ]),
+  );
 }
 
 export function createGroupAdminDataStore(
@@ -38,6 +75,7 @@ export function createGroupAdminDataStore(
   const commandSwitches = new Map<number, boolean>();
   const commandFeatureSwitches = new Map<number, Map<GroupAdminCommandKey, boolean>>();
   const silentSwitches = new Map<number, boolean>();
+  const memberCardSnapshots = new Map<number, Map<number, string>>();
 
   const save = async () => {
     await mkdir(dirname(options.listDataPath), { recursive: true });
@@ -52,6 +90,7 @@ export function createGroupAdminDataStore(
           commandSwitches: booleanMapToRecord(commandSwitches),
           commandFeatureSwitches: commandSwitchMapToRecord(commandFeatureSwitches),
           silentSwitches: booleanMapToRecord(silentSwitches),
+          memberCardSnapshots: memberCardSnapshotMapToRecord(memberCardSnapshots),
         },
         null,
         2,
@@ -80,6 +119,10 @@ export function createGroupAdminDataStore(
         commandFeatureSwitches,
       );
       addBooleanRecordToMap('silentSwitches' in data ? data.silentSwitches : undefined, silentSwitches);
+      addMemberCardSnapshotRecord(
+        'memberCardSnapshots' in data ? data.memberCardSnapshots : undefined,
+        memberCardSnapshots,
+      );
     } catch (error) {
       if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
         ctx.logger.error(`读取名单数据失败：${options.listDataPath}`, error);
@@ -97,6 +140,7 @@ export function createGroupAdminDataStore(
     commandSwitches,
     commandFeatureSwitches,
     silentSwitches,
+    memberCardSnapshots,
     ready,
     save,
   };

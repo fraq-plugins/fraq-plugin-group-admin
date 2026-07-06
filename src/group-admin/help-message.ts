@@ -54,7 +54,8 @@ ${commandStatusText}`,
 添加白名单 @成员或QQ号 / whitelist-add @成员或QQ号
 添加违禁词 词语 / word-add 词语
 删除违禁词 词语 / word-del 词语
-文件分类 / file-classify`,
+文件分类 / file-classify
+名片检查 / card-check`,
     },
     {
       title: '管理',

@@ -6,6 +6,7 @@ import {
   type GroupFileClassificationCategories,
   type GroupFileClassificationMode,
 } from './group-file-classification';
+import { checkGroupMemberCards, type GroupMemberCardManagementOptions } from './member-card-management';
 
 type GroupAdminContext = Context & { scheduler: SchedulerService };
 
@@ -19,6 +20,10 @@ export function registerScheduledTasks(options: {
   groupFileClassificationCron?: string;
   groupFileClassificationCategories?: GroupFileClassificationCategories;
   groupFileClassificationFallbackFolderName?: string;
+  groupMemberCardManagement: GroupMemberCardManagementOptions;
+  groupMemberCardCheckCron?: string;
+  memberCardSnapshots: Map<number, Map<number, string>>;
+  saveListData: () => Promise<void>;
   blacklistCleanupCron?: string;
   listDataReady: Promise<void>;
   isGroupEnabled: (groupId: number) => boolean;
@@ -36,6 +41,10 @@ export function registerScheduledTasks(options: {
     groupFileClassificationCron,
     groupFileClassificationCategories,
     groupFileClassificationFallbackFolderName,
+    groupMemberCardManagement,
+    groupMemberCardCheckCron,
+    memberCardSnapshots,
+    saveListData,
     blacklistCleanupCron,
     listDataReady,
     isGroupEnabled,
@@ -43,6 +52,37 @@ export function registerScheduledTasks(options: {
     blacklistedUserIds,
     kickBlacklistedMember,
   } = options;
+
+  if (groupMemberCardManagement.enabled) {
+    ctx.scheduler.expression(groupMemberCardCheckCron ?? '0 1 * * *', async () => {
+      try {
+        await listDataReady;
+
+        const { uin } = await ctx.client.get_login_info();
+        const { groups } = await ctx.client.get_group_list();
+        for (const group of groups) {
+          if (!isGroupEnabled(group.group_id)) {
+            continue;
+          }
+
+          const result = await checkGroupMemberCards({
+            ctx,
+            groupId: group.group_id,
+            botUserId: uin,
+            cardSnapshots: memberCardSnapshots,
+            management: groupMemberCardManagement,
+          });
+          ctx.logger.info(
+            `群名片检查完成：群 ${group.group_id}，检查 ${result.checked} 人，改动 ${result.changed} 人，违规 ${result.invalid} 人，恢复 ${result.reset} 人，失败 ${result.failed} 人`,
+          );
+        }
+
+        await saveListData();
+      } catch (error) {
+        ctx.logger.error('每日群名片检查失败', error);
+      }
+    });
+  }
 
   if (groupFileClassificationEnabled ?? true) {
     ctx.scheduler.expression(groupFileClassificationCron ?? '0 2 * * *', async () => {

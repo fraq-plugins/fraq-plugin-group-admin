@@ -9,6 +9,12 @@ export interface GroupAdminPluginOptions {
   groupFileClassificationCron?: string;
   groupFileClassificationCategories?: Record<string, string[]>;
   groupFileClassificationFallbackFolderName?: string;
+  groupMemberCardManagementEnabled?: boolean;
+  groupMemberCardRuleScope?: 'global' | 'group';
+  groupMemberCardPattern?: string;
+  groupMemberCardGroupPatterns?: Record<string, string>;
+  groupMemberCardViolationAction?: 'notify' | 'reset';
+  groupMemberCardCheckCron?: string;
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;

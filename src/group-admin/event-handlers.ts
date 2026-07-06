@@ -1,6 +1,7 @@
 import { type Context, msg, seg } from '@fraqjs/fraq';
 
 import type { GroupAdminCommandKey } from './command-definitions';
+import { type GroupMemberCardManagementOptions, observeGroupMemberCard } from './member-card-management';
 import { canBotModerateTarget, getMessagePlainText } from './message-utils';
 
 export function registerEventHandlers(options: {
@@ -16,6 +17,8 @@ export function registerEventHandlers(options: {
   blacklistedUserIds: ReadonlySet<number>;
   whitelistedUserIds: ReadonlySet<number>;
   forbiddenWords: ReadonlySet<string>;
+  memberCardSnapshots: Map<number, Map<number, string>>;
+  groupMemberCardManagement: GroupMemberCardManagementOptions;
   pendingJoinRequests: Map<
     number,
     {
@@ -27,6 +30,7 @@ export function registerEventHandlers(options: {
   >;
   spamRecords: Map<string, { timestamps: number[]; violationCount: number }>;
   listDataReady: Promise<void>;
+  saveListData: () => Promise<void>;
   isGroupEnabled: (groupId: number) => boolean;
   isCommandFeatureEnabled: (groupId: number, commandKey: GroupAdminCommandKey) => boolean;
   sendGroupMessageIfNotSilent: (
@@ -48,9 +52,12 @@ export function registerEventHandlers(options: {
     blacklistedUserIds,
     whitelistedUserIds,
     forbiddenWords,
+    memberCardSnapshots,
+    groupMemberCardManagement,
     pendingJoinRequests,
     spamRecords,
     listDataReady,
+    saveListData,
     isGroupEnabled,
     isCommandFeatureEnabled,
     sendGroupMessageIfNotSilent,
@@ -76,6 +83,19 @@ export function registerEventHandlers(options: {
       if (blacklistedUserIds.has(data.sender_id)) {
         await kickBlacklistedMember(data.peer_id, data.sender_id, self_id, 'message');
         return;
+      }
+
+      if (groupMemberCardManagement.enabled) {
+        await observeGroupMemberCard({
+          ctx,
+          groupId: data.peer_id,
+          botUserId: self_id,
+          member: data.group_member,
+          cardSnapshots: memberCardSnapshots,
+          management: groupMemberCardManagement,
+          notify: (message) => sendGroupMessageIfNotSilent(data.peer_id, message).then(() => undefined),
+        });
+        await saveListData();
       }
 
       const messageText = getMessagePlainText(data.segments);
