@@ -4,6 +4,10 @@ export interface GroupAdminPluginOptions {
   manualRejectionReason?: string;
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
+  groupFileClassificationEnabled?: boolean;
+  groupFileClassificationCron?: string;
+  groupFileClassificationCategories?: Record<string, string[]>;
+  groupFileClassificationFallbackFolderName?: string;
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;

@@ -1,6 +1,7 @@
 import type { Context } from '@fraqjs/fraq';
 
 import type { SchedulerService } from '../scheduler';
+import { classifyRootGroupFiles, type GroupFileClassificationCategories } from './group-file-classification';
 
 type GroupAdminContext = Context & { scheduler: SchedulerService };
 
@@ -9,6 +10,10 @@ export function registerScheduledTasks(options: {
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold: number;
   inactiveCleanupKickLimit: number;
+  groupFileClassificationEnabled?: boolean;
+  groupFileClassificationCron?: string;
+  groupFileClassificationCategories?: GroupFileClassificationCategories;
+  groupFileClassificationFallbackFolderName?: string;
   blacklistCleanupCron?: string;
   listDataReady: Promise<void>;
   isGroupEnabled: (groupId: number) => boolean;
@@ -21,6 +26,10 @@ export function registerScheduledTasks(options: {
     inactiveCleanupCron,
     inactiveCleanupFreeSlotsThreshold,
     inactiveCleanupKickLimit,
+    groupFileClassificationEnabled,
+    groupFileClassificationCron,
+    groupFileClassificationCategories,
+    groupFileClassificationFallbackFolderName,
     blacklistCleanupCron,
     listDataReady,
     isGroupEnabled,
@@ -28,6 +37,33 @@ export function registerScheduledTasks(options: {
     blacklistedUserIds,
     kickBlacklistedMember,
   } = options;
+
+  if (groupFileClassificationEnabled ?? true) {
+    ctx.scheduler.expression(groupFileClassificationCron ?? '0 2 * * *', async () => {
+      try {
+        await listDataReady;
+
+        const { groups } = await ctx.client.get_group_list();
+        for (const group of groups) {
+          if (!isGroupEnabled(group.group_id)) {
+            continue;
+          }
+
+          const { moved, skipped, failed } = await classifyRootGroupFiles({
+            ctx,
+            groupId: group.group_id,
+            categories: groupFileClassificationCategories,
+            fallbackFolderName: groupFileClassificationFallbackFolderName,
+          });
+          ctx.logger.info(
+            `群文件分类完成：群 ${group.group_id}，移动 ${moved} 个，跳过 ${skipped} 个，失败 ${failed} 个`,
+          );
+        }
+      } catch (error) {
+        ctx.logger.error('每日群文件分类失败', error);
+      }
+    });
+  }
 
   ctx.scheduler.expression(inactiveCleanupCron ?? '0 4 * * *', async () => {
     try {

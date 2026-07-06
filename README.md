@@ -1,6 +1,6 @@
 # fraq-plugin-group-admin
 
-Fraq 的 Milky 群管理插件。它把入群审核、刷屏处理、违禁词禁言、退群通知、手动踢人/禁言、消息撤回、黑白名单、群管开关和群头衔设置放在一个插件里，并附带一个轻量的定时任务服务。
+Fraq 的 Milky 群管理插件。它把入群审核、刷屏处理、违禁词禁言、群文件分类、退群通知、手动踢人/禁言、消息撤回、黑白名单、群管开关和群头衔设置放在一个插件里，并附带一个轻量的定时任务服务。
 
 ## 安装
 
@@ -39,6 +39,7 @@ await ctx.start();
 - 入群审核：低于最低 QQ 等级的申请自动拒绝，高于阈值的申请发送群内审核通知。
 - 审核回复：管理员或配置的审核员回复审核通知 `y` 同意、`n` 拒绝。
 - 容量清理：定时检查群容量，名额不足时踢出长期未发言的普通成员。
+- 群文件分类：每天按后缀名检查根目录群文件，自动创建分类文件夹并移动文件。
 - 刷屏处理：按消息段计数，默认 10 秒内 8 段触发警告，第三次违规禁言或踢出。
 - 违禁词禁言：普通成员发送包含违禁词的消息时自动禁言，支持命令添加和删除违禁词。
 - 退群通知：成员主动退群或被移出时在群内提示。
@@ -85,6 +86,10 @@ interface GroupAdminPluginOptions {
   manualRejectionReason?: string;
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
+  groupFileClassificationEnabled?: boolean;
+  groupFileClassificationCron?: string;
+  groupFileClassificationCategories?: Record<string, string[]>;
+  groupFileClassificationFallbackFolderName?: string;
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;
@@ -109,6 +114,10 @@ interface GroupAdminPluginOptions {
 | `manualRejectionReason` | `管理员拒绝入群` | 审核员回复 `n` 时使用的拒绝理由 |
 | `reviewerUserIds` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
 | `moderatorUserIds` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
+| `groupFileClassificationEnabled` | `true` | 是否启用每日群文件分类 |
+| `groupFileClassificationCron` | `0 2 * * *` | 群文件分类 cron 表达式 |
+| `groupFileClassificationCategories` | 内置分类 | 群文件分类规则，键是目标文件夹名，值是后缀名列表 |
+| `groupFileClassificationFallbackFolderName` | `其他` | 未匹配分类或无后缀文件移动到的文件夹；设为空字符串可跳过这些文件 |
 | `inactiveCleanupCron` | `0 4 * * *` | 容量清理 cron 表达式 |
 | `inactiveCleanupFreeSlotsThreshold` | `9` | 群剩余名额小于等于该值时触发清理 |
 | `inactiveCleanupKickLimit` | `100` | 单群单次最多清理人数 |
@@ -123,6 +132,8 @@ interface GroupAdminPluginOptions {
 | `blacklistRejectionReason` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
 | `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
 | `whitelistUserIds` | `[]` | 启动时注入的白名单用户 |
+
+内置群文件分类包括：图片、文档、表格、演示、压缩包、音频、视频、代码。分类任务只处理群文件根目录中的文件，不会移动已经位于子文件夹内的文件；按群开关关闭群管后，该群也会跳过群文件分类。
 
 ## 权限与限制
 
