@@ -15,6 +15,7 @@ export const defaultGroupFileClassificationCategories: GroupFileClassificationCa
 };
 
 type GroupFileClassificationContext = Pick<Context, 'client' | 'logger'>;
+type MoveGroupFileInput = Parameters<Context['client']['move_group_file']>[0];
 
 function normalizeExtension(extension: string): string {
   return extension.trim().replace(/^\.+/u, '').toLocaleLowerCase();
@@ -47,6 +48,47 @@ function buildExtensionFolderMap(categories: GroupFileClassificationCategories):
   }
 
   return extensionFolderMap;
+}
+
+function uniqueTexts(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function stripLeadingSlashes(value: string): string {
+  return value.replace(/^\/+/u, '');
+}
+
+function textOrEmpty(value: string | null | undefined): string {
+  return value ?? '';
+}
+
+async function moveGroupFileWithFallbacks(ctx: GroupFileClassificationContext, input: MoveGroupFileInput) {
+  const fileIds = uniqueTexts([input.file_id, stripLeadingSlashes(input.file_id)]).filter(Boolean);
+  const parentFolderId = textOrEmpty(input.parent_folder_id);
+  const targetFolderId = textOrEmpty(input.target_folder_id);
+  const parentFolderIds = uniqueTexts([parentFolderId, stripLeadingSlashes(parentFolderId), '/']).filter(Boolean);
+  const targetFolderIds = uniqueTexts([targetFolderId, stripLeadingSlashes(targetFolderId)]).filter(Boolean);
+  let lastError: unknown;
+
+  for (const fileId of fileIds) {
+    for (const parentFolderId of parentFolderIds) {
+      for (const targetFolderId of targetFolderIds) {
+        try {
+          await ctx.client.move_group_file({
+            group_id: input.group_id,
+            file_id: fileId,
+            parent_folder_id: parentFolderId,
+            target_folder_id: targetFolderId,
+          });
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 async function ensureFolder(
@@ -128,7 +170,7 @@ export async function classifyRootGroupFiles(options: {
         continue;
       }
 
-      await ctx.client.move_group_file({
+      await moveGroupFileWithFallbacks(ctx, {
         group_id: groupId,
         file_id: file.file_id,
         parent_folder_id: file.parent_folder_id || rootFolderId,

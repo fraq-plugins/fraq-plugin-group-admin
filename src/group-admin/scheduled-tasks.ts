@@ -49,9 +49,20 @@ export function registerScheduledTasks(options: {
       try {
         await listDataReady;
 
+        const { uin } = await ctx.client.get_login_info();
         const { groups } = await ctx.client.get_group_list();
         for (const group of groups) {
           if (!isGroupEnabled(group.group_id)) {
+            continue;
+          }
+
+          const { member: botMember } = await ctx.client.get_group_member_info({
+            group_id: group.group_id,
+            user_id: uin,
+            no_cache: true,
+          });
+          if (botMember.role === 'member') {
+            ctx.logger.warn(`群文件分类跳过：机器人不是群主或管理员，群 ${group.group_id}`);
             continue;
           }
 

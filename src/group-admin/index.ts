@@ -400,6 +400,16 @@ export const GroupAdminPlugin = definePlugin({
         return;
       }
 
+      const { member: botMember } = await ctx.client.get_group_member_info({
+        group_id: session.raw.peer_id,
+        user_id: session.selfId,
+        no_cache: true,
+      });
+      if (botMember.role === 'member') {
+        await replyIfNotSilent(session, msg`机器人不是群主或管理员，无法移动群文件`);
+        return;
+      }
+
       const { moved, skipped, failed } = await classifyRootGroupFiles({
         ctx,
         groupId: session.raw.peer_id,

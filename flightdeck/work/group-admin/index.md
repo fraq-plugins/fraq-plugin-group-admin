@@ -138,6 +138,7 @@ Blocked/known:
 - Removed the final-response summary report requirement from `flightdeck/briefing.md`; future task completions should be concise and should not include the file/line report table unless explicitly requested.
 - Updated group-file classification so `extension` mode is the default, `category` mode remains available through `groupFileClassificationMode`, and moderators can manually trigger current-group classification with `文件分类` / `群文件分类` / `file-classify`.
 - Fixed group-file classification root folder handling for `0.7.2`: Milky file APIs use `/` as the root folder ID, so root file listing and folder cache entries now use `/` instead of an empty string.
+- Hardened group-file classification for `0.7.3`: manual and scheduled classification now verify the bot is owner/admin before moving files, and `move_group_file` retries compatible file/folder ID forms with and without leading slashes to handle Milky/Lagrange ID formatting differences.
 
 ## Open questions
 
