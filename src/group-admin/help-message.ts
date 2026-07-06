@@ -43,8 +43,8 @@ export function buildHelpMessageSections(options: {
 一键开 / 一键关：同时开关群管和命令`,
     },
     {
-      title: '更多命令',
-      content: `更多命令
+      title: '开关状态',
+      content: `开关状态
 ${commandStatusText}`,
     },
     {
