@@ -1,4 +1,4 @@
-import { definePlugin, type milky, msg, param, type Session } from '@fraqjs/fraq';
+import { definePlugin, type milky, msg, param, type Session, seg } from '@fraqjs/fraq';
 
 import { SchedulerService } from '../scheduler';
 import {
@@ -9,7 +9,7 @@ import {
 } from './command-definitions';
 import { createGroupAdminDataStore } from './data-store';
 import { registerEventHandlers } from './event-handlers';
-import { buildHelpMessage } from './help-message';
+import { buildHelpMessageSections } from './help-message';
 import {
   canBotModerateTarget,
   parseModerationDuration,
@@ -414,15 +414,29 @@ export const GroupAdminPlugin = definePlugin({
       .execute(async (session) => {
         await listDataReady;
 
-        await session.reply(
-          msg`${buildHelpMessage({
-            groupId: session.raw.message_scene === 'group' ? session.raw.peer_id : undefined,
-            isGroupEnabled,
-            areCommandsEnabled,
-            isSilentEnabled,
-            isCommandFeatureEnabled,
-          })}`,
-        );
+        const helpSections = buildHelpMessageSections({
+          groupId: session.raw.message_scene === 'group' ? session.raw.peer_id : undefined,
+          isGroupEnabled,
+          areCommandsEnabled,
+          isSilentEnabled,
+          isCommandFeatureEnabled,
+        });
+
+        await session.reply([
+          seg.forward(
+            helpSections.map(({ title, content }) => ({
+              user_id: session.selfId,
+              sender_name: title,
+              segments: msg`${content}`,
+            })),
+            {
+              title: '群管帮助',
+              preview: helpSections.slice(0, 4).map(({ title }) => title),
+              summary: `共 ${helpSections.length} 段群管帮助`,
+              prompt: '群管帮助',
+            },
+          ),
+        ]);
       });
 
     ctx.router

@@ -133,6 +133,7 @@ Blocked/known:
 - Refactored the help command content into `src/group-admin/help-message.ts` and reorganized the visible help output by status, switches, lists, moderation, and other actions.
 - Added a `更多命令` section to help output that lists every feature command with `[√]命令名` or `[x]命令名` status markers.
 - Removed the command-prefix feature again: `commandPrefix` is gone from public options, router commands and reply actions are registered without `/`, help output and README examples now show no-prefix commands, and verification passed with `pnpm lint`, `pnpm check`, `pnpm smoke`, and `npm pack --dry-run`.
+- Changed the help command to send a merged-forward message split into status, switch, command status, list, moderation, and other sections. Bumped the package version to `0.6.4`; verification passed with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, and `npm pack --dry-run`.
 
 ## Open questions
 
