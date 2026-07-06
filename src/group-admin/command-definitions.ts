@@ -1,4 +1,12 @@
-export type GroupAdminCommandKey = 'title' | 'blacklist' | 'whitelist' | 'forbiddenWord' | 'kick' | 'mute' | 'recall';
+export type GroupAdminCommandKey =
+  | 'title'
+  | 'blacklist'
+  | 'whitelist'
+  | 'forbiddenWord'
+  | 'fileClassification'
+  | 'kick'
+  | 'mute'
+  | 'recall';
 
 export const groupAdminCommandDefinitions: {
   key: GroupAdminCommandKey;
@@ -9,6 +17,7 @@ export const groupAdminCommandDefinitions: {
   { key: 'blacklist', label: '添加黑名单', names: ['添加黑名单', '黑名单', 'blacklist-add'] },
   { key: 'whitelist', label: '添加白名单', names: ['添加白名单', '白名单', 'whitelist-add'] },
   { key: 'forbiddenWord', label: '违禁词', names: ['添加违禁词', '删除违禁词', '违禁词', 'word-add', 'word-del'] },
+  { key: 'fileClassification', label: '文件分类', names: ['文件分类', '群文件分类', 'file-classify'] },
   { key: 'kick', label: '踢人', names: ['踢人', '踢', 'kick'] },
   { key: 'mute', label: '禁言', names: ['禁言', 'mute'] },
   { key: 'recall', label: '撤回', names: ['撤回', 'recall'] },

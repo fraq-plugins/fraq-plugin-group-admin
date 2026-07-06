@@ -136,6 +136,7 @@ Blocked/known:
 - Changed the help command to send a merged-forward message split into status, switch, command status, list, moderation, and other sections. Bumped the package version to `0.6.4`; verification passed with `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, and `npm pack --dry-run`.
 - Added daily group-file classification for `0.7.0`: the scheduler scans enabled groups at `0 2 * * *`, classifies root group files by suffix into folders, creates missing folders, moves files with Milky group-file APIs, and exposes configuration for enabling, cron, categories, and fallback folder name.
 - Removed the final-response summary report requirement from `flightdeck/briefing.md`; future task completions should be concise and should not include the file/line report table unless explicitly requested.
+- Updated group-file classification so `extension` mode is the default, `category` mode remains available through `groupFileClassificationMode`, and moderators can manually trigger current-group classification with `文件分类` / `群文件分类` / `file-classify`.
 
 ## Open questions
 

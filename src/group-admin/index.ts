@@ -9,6 +9,7 @@ import {
 } from './command-definitions';
 import { createGroupAdminDataStore } from './data-store';
 import { registerEventHandlers } from './event-handlers';
+import { classifyRootGroupFiles } from './group-file-classification';
 import { buildHelpMessageSections } from './help-message';
 import {
   canBotModerateTarget,
@@ -394,6 +395,21 @@ export const GroupAdminPlugin = definePlugin({
       );
     };
 
+    const executeGroupFileClassificationCommand = async (session: Session) => {
+      if (!(await ensureCommandAvailable(session, 'fileClassification'))) {
+        return;
+      }
+
+      const { moved, skipped, failed } = await classifyRootGroupFiles({
+        ctx,
+        groupId: session.raw.peer_id,
+        mode: options?.groupFileClassificationMode,
+        categories: options?.groupFileClassificationCategories,
+        fallbackFolderName: options?.groupFileClassificationFallbackFolderName,
+      });
+      await replyIfNotSilent(session, msg`群文件分类完成：移动 ${moved} 个，跳过 ${skipped} 个，失败 ${failed} 个`);
+    };
+
     ctx.logger.info(`已载入插件：group-admin，入群最低 QQ 等级：${minimumAllowedLevel}`);
     registerScheduledTasks({
       ctx,
@@ -401,6 +417,7 @@ export const GroupAdminPlugin = definePlugin({
       inactiveCleanupFreeSlotsThreshold,
       inactiveCleanupKickLimit,
       groupFileClassificationEnabled: options?.groupFileClassificationEnabled,
+      groupFileClassificationMode: options?.groupFileClassificationMode,
       groupFileClassificationCron: options?.groupFileClassificationCron,
       groupFileClassificationCategories: options?.groupFileClassificationCategories,
       groupFileClassificationFallbackFolderName: options?.groupFileClassificationFallbackFolderName,
@@ -531,6 +548,13 @@ export const GroupAdminPlugin = definePlugin({
           user_id: session.raw.sender_id,
           special_title: title,
         });
+      });
+
+    ctx.router
+      .command('文件分类')
+      .alias('群文件分类', 'file-classify')
+      .execute(async (session) => {
+        await executeGroupFileClassificationCommand(session);
       });
 
     ctx.router

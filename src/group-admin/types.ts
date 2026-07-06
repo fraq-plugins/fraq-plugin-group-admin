@@ -5,6 +5,7 @@ export interface GroupAdminPluginOptions {
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
   groupFileClassificationEnabled?: boolean;
+  groupFileClassificationMode?: 'extension' | 'category';
   groupFileClassificationCron?: string;
   groupFileClassificationCategories?: Record<string, string[]>;
   groupFileClassificationFallbackFolderName?: string;

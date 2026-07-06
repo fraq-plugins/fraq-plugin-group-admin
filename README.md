@@ -39,7 +39,7 @@ await ctx.start();
 - 入群审核：低于最低 QQ 等级的申请自动拒绝，高于阈值的申请发送群内审核通知。
 - 审核回复：管理员或配置的审核员回复审核通知 `y` 同意、`n` 拒绝。
 - 容量清理：定时检查群容量，名额不足时踢出长期未发言的普通成员。
-- 群文件分类：每天按后缀名检查根目录群文件，自动创建分类文件夹并移动文件。
+- 群文件分类：每天按后缀名检查根目录群文件，自动创建分类文件夹并移动文件，也支持手动触发和切换为内置分类模式。
 - 刷屏处理：按消息段计数，默认 10 秒内 8 段触发警告，第三次违规禁言或踢出。
 - 违禁词禁言：普通成员发送包含违禁词的消息时自动禁言，支持命令添加和删除违禁词。
 - 退群通知：成员主动退群或被移出时在群内提示。
@@ -59,8 +59,8 @@ await ctx.start();
 | `群关` / `群管关` | 关闭当前群自动群管 |
 | `命令开` | 开启当前群全部群管命令 |
 | `命令关` | 关闭当前群全部群管命令 |
-| `命令开 名称` | 开启当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
-| `命令关 名称` | 关闭当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
+| `命令开 名称` | 开启当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
+| `命令关 名称` | 关闭当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
 | `静默开` | 开启当前群静默模式 |
 | `静默关` | 关闭当前群静默模式 |
 | `一键开` | 同时开启自动群管和群管命令 |
@@ -70,6 +70,7 @@ await ctx.start();
 | `添加白名单 @成员` / `添加白名单 QQ号` / `whitelist-add @成员或QQ号` | 添加白名单用户 |
 | `添加违禁词 词语` / `word-add 词语` | 添加违禁词 |
 | `删除违禁词 词语` / `word-del 词语` | 删除违禁词 |
+| `文件分类` / `群文件分类` / `file-classify` | 手动分类当前群根目录群文件 |
 | `踢人 @成员` / `踢人 QQ号` / `踢 @成员或QQ号` / `kick @成员或QQ号` | 踢出成员 |
 | `禁言 @成员 [秒数]` / `禁言 QQ号 [秒数]` / `mute @成员或QQ号 [秒数]` | 禁言成员 |
 | `撤回 数量` / `recall 数量` | 撤回命令上方的若干条消息 |
@@ -87,6 +88,7 @@ interface GroupAdminPluginOptions {
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
   groupFileClassificationEnabled?: boolean;
+  groupFileClassificationMode?: 'extension' | 'category';
   groupFileClassificationCron?: string;
   groupFileClassificationCategories?: Record<string, string[]>;
   groupFileClassificationFallbackFolderName?: string;
@@ -115,6 +117,7 @@ interface GroupAdminPluginOptions {
 | `reviewerUserIds` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
 | `moderatorUserIds` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
 | `groupFileClassificationEnabled` | `true` | 是否启用每日群文件分类 |
+| `groupFileClassificationMode` | `extension` | 群文件分类模式：`extension` 按后缀名建文件夹，`category` 使用分类规则映射到文件夹 |
 | `groupFileClassificationCron` | `0 2 * * *` | 群文件分类 cron 表达式 |
 | `groupFileClassificationCategories` | 内置分类 | 群文件分类规则，键是目标文件夹名，值是后缀名列表 |
 | `groupFileClassificationFallbackFolderName` | `其他` | 未匹配分类或无后缀文件移动到的文件夹；设为空字符串可跳过这些文件 |
@@ -133,7 +136,7 @@ interface GroupAdminPluginOptions {
 | `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
 | `whitelistUserIds` | `[]` | 启动时注入的白名单用户 |
 
-内置群文件分类包括：图片、文档、表格、演示、压缩包、音频、视频、代码。分类任务只处理群文件根目录中的文件，不会移动已经位于子文件夹内的文件；按群开关关闭群管后，该群也会跳过群文件分类。
+默认群文件分类模式会按后缀名创建文件夹，例如 `pdf`、`zip`、`png`。设置 `groupFileClassificationMode: 'category'` 后会使用内置分类：图片、文档、表格、演示、压缩包、音频、视频、代码。分类任务只处理群文件根目录中的文件，不会移动已经位于子文件夹内的文件；按群开关关闭群管后，该群也会跳过每日群文件分类。
 
 ## 权限与限制
 

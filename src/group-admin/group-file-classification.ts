@@ -1,6 +1,7 @@
 import type { Context, milky } from '@fraqjs/fraq';
 
 export type GroupFileClassificationCategories = Record<string, readonly string[]>;
+export type GroupFileClassificationMode = 'extension' | 'category';
 
 export const defaultGroupFileClassificationCategories: GroupFileClassificationCategories = {
   图片: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'heic', 'heif'],
@@ -81,10 +82,17 @@ async function ensureFolder(
 export async function classifyRootGroupFiles(options: {
   ctx: GroupFileClassificationContext;
   groupId: number;
+  mode?: GroupFileClassificationMode;
   categories?: GroupFileClassificationCategories;
   fallbackFolderName?: string;
 }): Promise<{ moved: number; skipped: number; failed: number }> {
-  const { ctx, groupId, categories = defaultGroupFileClassificationCategories, fallbackFolderName = '其他' } = options;
+  const {
+    ctx,
+    groupId,
+    mode = 'extension',
+    categories = defaultGroupFileClassificationCategories,
+    fallbackFolderName = '其他',
+  } = options;
   const rootFolderId = '';
   const extensionFolderMap = buildExtensionFolderMap(categories);
   const fallbackFolder = fallbackFolderName.trim();
@@ -100,7 +108,8 @@ export async function classifyRootGroupFiles(options: {
 
   for (const file of files) {
     const extension = getFileExtension(file.file_name);
-    const targetFolderName = extension ? extensionFolderMap.get(extension) : undefined;
+    const targetFolderName =
+      extension && mode === 'extension' ? extension : extension ? extensionFolderMap.get(extension) : undefined;
     const finalFolderName = targetFolderName ?? fallbackFolder;
     if (!finalFolderName) {
       skipped += 1;

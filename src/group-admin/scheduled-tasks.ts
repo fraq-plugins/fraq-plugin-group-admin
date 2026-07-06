@@ -1,7 +1,11 @@
 import type { Context } from '@fraqjs/fraq';
 
 import type { SchedulerService } from '../scheduler';
-import { classifyRootGroupFiles, type GroupFileClassificationCategories } from './group-file-classification';
+import {
+  classifyRootGroupFiles,
+  type GroupFileClassificationCategories,
+  type GroupFileClassificationMode,
+} from './group-file-classification';
 
 type GroupAdminContext = Context & { scheduler: SchedulerService };
 
@@ -11,6 +15,7 @@ export function registerScheduledTasks(options: {
   inactiveCleanupFreeSlotsThreshold: number;
   inactiveCleanupKickLimit: number;
   groupFileClassificationEnabled?: boolean;
+  groupFileClassificationMode?: GroupFileClassificationMode;
   groupFileClassificationCron?: string;
   groupFileClassificationCategories?: GroupFileClassificationCategories;
   groupFileClassificationFallbackFolderName?: string;
@@ -27,6 +32,7 @@ export function registerScheduledTasks(options: {
     inactiveCleanupFreeSlotsThreshold,
     inactiveCleanupKickLimit,
     groupFileClassificationEnabled,
+    groupFileClassificationMode,
     groupFileClassificationCron,
     groupFileClassificationCategories,
     groupFileClassificationFallbackFolderName,
@@ -52,6 +58,7 @@ export function registerScheduledTasks(options: {
           const { moved, skipped, failed } = await classifyRootGroupFiles({
             ctx,
             groupId: group.group_id,
+            mode: groupFileClassificationMode,
             categories: groupFileClassificationCategories,
             fallbackFolderName: groupFileClassificationFallbackFolderName,
           });
