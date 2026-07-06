@@ -137,6 +137,7 @@ Blocked/known:
 - Added daily group-file classification for `0.7.0`: the scheduler scans enabled groups at `0 2 * * *`, classifies root group files by suffix into folders, creates missing folders, moves files with Milky group-file APIs, and exposes configuration for enabling, cron, categories, and fallback folder name.
 - Removed the final-response summary report requirement from `flightdeck/briefing.md`; future task completions should be concise and should not include the file/line report table unless explicitly requested.
 - Updated group-file classification so `extension` mode is the default, `category` mode remains available through `groupFileClassificationMode`, and moderators can manually trigger current-group classification with `文件分类` / `群文件分类` / `file-classify`.
+- Fixed group-file classification root folder handling for `0.7.2`: Milky file APIs use `/` as the root folder ID, so root file listing and folder cache entries now use `/` instead of an empty string.
 
 ## Open questions
 

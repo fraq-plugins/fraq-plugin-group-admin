@@ -68,7 +68,7 @@ async function ensureFolder(
   folders.push({
     group_id: groupId,
     folder_id,
-    parent_folder_id: '',
+    parent_folder_id: '/',
     folder_name: folderName,
     created_time: Math.floor(Date.now() / 1000),
     last_modified_time: Math.floor(Date.now() / 1000),
@@ -93,7 +93,7 @@ export async function classifyRootGroupFiles(options: {
     categories = defaultGroupFileClassificationCategories,
     fallbackFolderName = '其他',
   } = options;
-  const rootFolderId = '';
+  const rootFolderId = '/';
   const extensionFolderMap = buildExtensionFolderMap(categories);
   const fallbackFolder = fallbackFolderName.trim();
   const { files, folders } = await ctx.client.get_group_files({
