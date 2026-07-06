@@ -1,5 +1,4 @@
 export interface GroupAdminPluginOptions {
-  commandPrefix?: string;
   minimumAllowedLevel?: number;
   rejectionReason?: string;
   manualRejectionReason?: string;

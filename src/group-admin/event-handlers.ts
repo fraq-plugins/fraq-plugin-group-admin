@@ -5,7 +5,6 @@ import { canBotModerateTarget, getMessagePlainText } from './message-utils';
 
 export function registerEventHandlers(options: {
   ctx: Context;
-  commandPrefix: string;
   minimumAllowedLevel: number;
   rejectionReason: string;
   blacklistRejectionReason: string;
@@ -14,7 +13,6 @@ export function registerEventHandlers(options: {
   spamAction: 'kick' | 'mute';
   spamMuteDurationSeconds: number;
   forbiddenWordMuteDurationSeconds: number;
-  moderatorUserIds: ReadonlySet<number>;
   blacklistedUserIds: ReadonlySet<number>;
   whitelistedUserIds: ReadonlySet<number>;
   forbiddenWords: ReadonlySet<string>;
@@ -39,7 +37,6 @@ export function registerEventHandlers(options: {
 }): void {
   const {
     ctx,
-    commandPrefix,
     minimumAllowedLevel,
     rejectionReason,
     blacklistRejectionReason,
@@ -48,7 +45,6 @@ export function registerEventHandlers(options: {
     spamAction,
     spamMuteDurationSeconds,
     forbiddenWordMuteDurationSeconds,
-    moderatorUserIds,
     blacklistedUserIds,
     whitelistedUserIds,
     forbiddenWords,
@@ -83,10 +79,6 @@ export function registerEventHandlers(options: {
       }
 
       const messageText = getMessagePlainText(data.segments);
-      if (commandPrefix && messageText.trim().startsWith(commandPrefix) && moderatorUserIds.has(data.sender_id)) {
-        return;
-      }
-
       if (data.group_member.role !== 'member') {
         return;
       }

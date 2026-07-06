@@ -132,6 +132,7 @@ Blocked/known:
 - Clarified the final-response report convention: list all changed locations, and use `第 x-y 行` for continuous multi-line ranges.
 - Refactored the help command content into `src/group-admin/help-message.ts` and reorganized the visible help output by status, switches, lists, moderation, and other actions.
 - Added a `更多命令` section to help output that lists every feature command with `[√]命令名` or `[x]命令名` status markers.
+- Removed the command-prefix feature again: `commandPrefix` is gone from public options, router commands and reply actions are registered without `/`, help output and README examples now show no-prefix commands, and verification passed with `pnpm lint`, `pnpm check`, `pnpm smoke`, and `npm pack --dry-run`.
 
 ## Open questions
 

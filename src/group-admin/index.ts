@@ -32,13 +32,6 @@ export const GroupAdminPlugin = definePlugin({
     scheduler: SchedulerService,
   },
   apply(ctx, options?: GroupAdminPluginOptions) {
-    const commandPrefix = options?.commandPrefix ?? '/';
-    const withCommandPrefix = (name: string): string => `${commandPrefix}${name}`;
-    const prefixedCommandNames = (names: readonly string[]): string[] => names.map(withCommandPrefix);
-    const parseConfiguredCommandKey = (text: string): GroupAdminCommandKey | undefined =>
-      parseGroupAdminCommandKey(
-        commandPrefix && text.startsWith(commandPrefix) ? text.slice(commandPrefix.length) : text,
-      );
     const minimumAllowedLevel = options?.minimumAllowedLevel ?? 5;
     const rejectionReason = options?.rejectionReason ?? `QQ 等级低于 ${minimumAllowedLevel}，暂不允许入群`;
     const manualRejectionReason = options?.manualRejectionReason ?? '管理员拒绝入群';
@@ -127,7 +120,7 @@ export const GroupAdminPlugin = definePlugin({
         return;
       }
 
-      const commandKey = parseConfiguredCommandKey(commandName);
+      const commandKey = parseGroupAdminCommandKey(commandName);
       if (!commandKey) {
         await session.reply(msg`未知命令：${commandName}。可设置：${formatCommandFeatureNames()}`);
         return;
@@ -416,15 +409,14 @@ export const GroupAdminPlugin = definePlugin({
     });
 
     ctx.router
-      .command(withCommandPrefix('help'))
-      .alias(...prefixedCommandNames(['帮助', '菜单']))
+      .command('help')
+      .alias('帮助', '菜单')
       .execute(async (session) => {
         await listDataReady;
 
         await session.reply(
           msg`${buildHelpMessage({
             groupId: session.raw.message_scene === 'group' ? session.raw.peer_id : undefined,
-            withCommandPrefix,
             isGroupEnabled,
             areCommandsEnabled,
             isSilentEnabled,
@@ -434,59 +426,59 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('群开'))
-      .alias(withCommandPrefix('群管开'))
+      .command('群开')
+      .alias('群管开')
       .execute(async (session) => {
         await executeSwitchCommand(session, 'group', true);
       });
 
     ctx.router
-      .command(withCommandPrefix('群关'))
-      .alias(withCommandPrefix('群管关'))
+      .command('群关')
+      .alias('群管关')
       .execute(async (session) => {
         await executeSwitchCommand(session, 'group', false);
       });
 
     ctx.router
-      .command(withCommandPrefix('命令开'))
+      .command('命令开')
       .arg('commandName', param.greedy())
       .execute(async (session, { commandName }) => {
         await executeCommandFeatureSwitchCommand(session, commandName, true);
       });
 
-    ctx.router.command(withCommandPrefix('命令开')).execute(async (session) => {
+    ctx.router.command('命令开').execute(async (session) => {
       await executeSwitchCommand(session, 'command', true);
     });
 
     ctx.router
-      .command(withCommandPrefix('命令关'))
+      .command('命令关')
       .arg('commandName', param.greedy())
       .execute(async (session, { commandName }) => {
         await executeCommandFeatureSwitchCommand(session, commandName, false);
       });
 
-    ctx.router.command(withCommandPrefix('命令关')).execute(async (session) => {
+    ctx.router.command('命令关').execute(async (session) => {
       await executeSwitchCommand(session, 'command', false);
     });
 
-    ctx.router.command(withCommandPrefix('静默开')).execute(async (session) => {
+    ctx.router.command('静默开').execute(async (session) => {
       await executeSwitchCommand(session, 'silent', true);
     });
 
-    ctx.router.command(withCommandPrefix('静默关')).execute(async (session) => {
+    ctx.router.command('静默关').execute(async (session) => {
       await executeSwitchCommand(session, 'silent', false);
     });
 
-    ctx.router.command(withCommandPrefix('一键开')).execute(async (session) => {
+    ctx.router.command('一键开').execute(async (session) => {
       await executeSwitchCommand(session, 'all', true);
     });
 
-    ctx.router.command(withCommandPrefix('一键关')).execute(async (session) => {
+    ctx.router.command('一键关').execute(async (session) => {
       await executeSwitchCommand(session, 'all', false);
     });
 
     ctx.router
-      .command(withCommandPrefix('title'))
+      .command('title')
       .arg('title', param.greedy())
       .execute(async (session, { title }) => {
         await listDataReady;
@@ -524,8 +516,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('添加黑名单'))
-      .alias(withCommandPrefix('blacklist-add'))
+      .command('添加黑名单')
+      .alias('blacklist-add')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'blacklist'))) {
@@ -549,8 +541,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('添加白名单'))
-      .alias(withCommandPrefix('whitelist-add'))
+      .command('添加白名单')
+      .alias('whitelist-add')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'whitelist'))) {
@@ -569,8 +561,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('添加违禁词'))
-      .alias(withCommandPrefix('word-add'))
+      .command('添加违禁词')
+      .alias('word-add')
       .arg('word', param.greedy())
       .execute(async (session, { word }) => {
         if (!(await ensureCommandAvailable(session, 'forbiddenWord'))) {
@@ -589,8 +581,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('删除违禁词'))
-      .alias(withCommandPrefix('word-del'))
+      .command('删除违禁词')
+      .alias('word-del')
       .arg('word', param.greedy())
       .execute(async (session, { word }) => {
         if (!(await ensureCommandAvailable(session, 'forbiddenWord'))) {
@@ -613,8 +605,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('踢人'))
-      .alias(...prefixedCommandNames(['kick', '踢']))
+      .command('踢人')
+      .alias('kick', '踢')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'kick'))) {
@@ -663,8 +655,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('禁言'))
-      .alias(withCommandPrefix('mute'))
+      .command('禁言')
+      .alias('mute')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         if (!(await ensureCommandAvailable(session, 'mute'))) {
@@ -714,8 +706,8 @@ export const GroupAdminPlugin = definePlugin({
       });
 
     ctx.router
-      .command(withCommandPrefix('撤回'))
-      .alias(withCommandPrefix('recall'))
+      .command('撤回')
+      .alias('recall')
       .arg('target', param.catchAll())
       .execute(async (session, { target }) => {
         await executeRecallCommand(session, target);
@@ -723,7 +715,7 @@ export const GroupAdminPlugin = definePlugin({
 
     ctx.router
       .rawPattern()
-      .arg('command', param.union(withCommandPrefix('撤回'), withCommandPrefix('recall')))
+      .arg('command', param.union('撤回', 'recall'))
       .execute(async (session) => {
         await executeRecallCommand(session, []);
       });
@@ -731,7 +723,7 @@ export const GroupAdminPlugin = definePlugin({
     ctx.router
       .rawPattern()
       .arg('reply', param.segment('reply'))
-      .arg('command', param.union(withCommandPrefix('撤回'), withCommandPrefix('recall')))
+      .arg('command', param.union('撤回', 'recall'))
       .arg('target', param.catchAll())
       .execute(async (session, { reply, target }) => {
         await executeRecallCommand(session, [reply, ...target]);
@@ -740,7 +732,7 @@ export const GroupAdminPlugin = definePlugin({
     ctx.router
       .rawPattern()
       .arg('reply', param.segment('reply'))
-      .arg('command', param.union(withCommandPrefix('撤回'), withCommandPrefix('recall')))
+      .arg('command', param.union('撤回', 'recall'))
       .execute(async (session, { reply }) => {
         await executeRecallCommand(session, [reply]);
       });
@@ -748,7 +740,7 @@ export const GroupAdminPlugin = definePlugin({
     ctx.router
       .rawPattern()
       .arg('reply', param.segment('reply'))
-      .arg('decision', param.union(withCommandPrefix('y'), withCommandPrefix('n')))
+      .arg('decision', param.union('y', 'n'))
       .execute(async (session, { reply, decision }) => {
         await listDataReady;
 
@@ -772,7 +764,7 @@ export const GroupAdminPlugin = definePlugin({
 
         pendingJoinRequests.delete(reply.data.message_seq);
 
-        if (decision === withCommandPrefix('y')) {
+        if (decision === 'y') {
           await ctx.client.accept_group_request({
             group_id: request.groupId,
             notification_seq: request.notificationSeq,
@@ -795,7 +787,6 @@ export const GroupAdminPlugin = definePlugin({
 
     registerEventHandlers({
       ctx,
-      commandPrefix,
       minimumAllowedLevel,
       rejectionReason,
       blacklistRejectionReason,
@@ -804,7 +795,6 @@ export const GroupAdminPlugin = definePlugin({
       spamAction,
       spamMuteDurationSeconds,
       forbiddenWordMuteDurationSeconds,
-      moderatorUserIds,
       blacklistedUserIds,
       whitelistedUserIds,
       forbiddenWords,
