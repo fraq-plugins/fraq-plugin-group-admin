@@ -1,6 +1,6 @@
 {
   "name": "fraq-plugin-group-admin",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Fraq group administration plugin for Milky bots.",
   "license": "MIT",
   "repository": {

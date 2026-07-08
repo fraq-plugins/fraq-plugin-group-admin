@@ -14,6 +14,7 @@ import { buildHelpMessageSections } from './help-message';
 import { checkGroupMemberCards, type GroupMemberCardManagementOptions } from './member-card-management';
 import {
   canBotModerateTarget,
+  getMessagePlainText,
   parseModerationDuration,
   parseModerationTarget,
   parseRecallCount,
@@ -27,6 +28,19 @@ import { registerScheduledTasks } from './scheduled-tasks';
 import type { GroupAdminPluginOptions } from './types';
 
 export type { GroupAdminPluginOptions } from './types';
+
+interface PendingJoinRequest {
+  groupId: number;
+  initiatorId: number;
+  notificationSeq: number;
+  isFiltered: boolean;
+}
+
+function isPendingJoinRequestNotification(
+  notification: milky.GroupNotification,
+): notification is Extract<milky.GroupNotification, { type: 'join_request' }> {
+  return notification.type === 'join_request' && notification.state === 'pending';
+}
 
 export const GroupAdminPlugin = definePlugin({
   name: 'group-admin',
@@ -66,15 +80,7 @@ export const GroupAdminPlugin = definePlugin({
       ready: listDataReady,
       save: saveListData,
     } = dataStore;
-    const pendingJoinRequests = new Map<
-      number,
-      {
-        groupId: number;
-        initiatorId: number;
-        notificationSeq: number;
-        isFiltered: boolean;
-      }
-    >();
+    const pendingJoinRequests = new Map<number, PendingJoinRequest>();
     const spamRecords = new Map<string, { timestamps: number[]; violationCount: number }>();
 
     const isGroupEnabled = (groupId: number): boolean => groupSwitches.get(groupId) ?? true;
@@ -402,6 +408,72 @@ export const GroupAdminPlugin = definePlugin({
         session,
         failed ? msg`已撤回 ${success} 条消息，${failed} 条失败` : msg`已撤回 ${success} 条消息`,
       );
+    };
+
+    const parseJoinRequestInitiatorId = (segments: milky.IncomingSegment[]): number | undefined => {
+      const text = getMessagePlainText(segments);
+      const accountMatch = /账号[：:]\s*(\d+)/u.exec(text);
+      if (accountMatch) {
+        return Number(accountMatch[1]);
+      }
+
+      const fallbackMatch = /\d{5,}/u.exec(text);
+      return fallbackMatch ? Number(fallbackMatch[0]) : undefined;
+    };
+
+    const findPendingJoinRequestFromNotifications = async (
+      groupId: number,
+      initiatorId: number,
+    ): Promise<PendingJoinRequest | undefined> => {
+      for (const isFiltered of [false, true]) {
+        let cursor: number | undefined;
+        for (let page = 0; page < 5; page += 1) {
+          const { notifications, next_notification_seq } = await ctx.client.get_group_notifications({
+            start_notification_seq: cursor,
+            is_filtered: isFiltered,
+            limit: 50,
+          });
+          for (const notification of notifications) {
+            if (!isPendingJoinRequestNotification(notification)) {
+              continue;
+            }
+
+            if (notification.group_id === groupId && notification.initiator_id === initiatorId) {
+              return {
+                groupId: notification.group_id,
+                initiatorId: notification.initiator_id,
+                notificationSeq: notification.notification_seq,
+                isFiltered: notification.is_filtered,
+              };
+            }
+          }
+
+          if (!next_notification_seq || next_notification_seq === cursor) {
+            break;
+          }
+
+          cursor = next_notification_seq;
+        }
+      }
+
+      return undefined;
+    };
+
+    const resolvePendingJoinRequest = async (
+      groupId: number,
+      reply: Extract<milky.IncomingSegment, { type: 'reply' }>,
+    ): Promise<PendingJoinRequest | undefined> => {
+      const cachedRequest = pendingJoinRequests.get(reply.data.message_seq);
+      if (cachedRequest?.groupId === groupId) {
+        return cachedRequest;
+      }
+
+      const initiatorId = parseJoinRequestInitiatorId(reply.data.segments);
+      if (!initiatorId) {
+        return undefined;
+      }
+
+      return findPendingJoinRequestFromNotifications(groupId, initiatorId);
     };
 
     const executeGroupFileClassificationCommand = async (session: Session) => {
@@ -844,8 +916,8 @@ export const GroupAdminPlugin = definePlugin({
           return;
         }
 
-        const request = pendingJoinRequests.get(reply.data.message_seq);
-        if (!request || request.groupId !== session.raw.peer_id) {
+        const request = await resolvePendingJoinRequest(session.raw.peer_id, reply);
+        if (!request) {
           return;
         }
 
