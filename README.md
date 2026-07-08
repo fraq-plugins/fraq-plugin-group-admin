@@ -61,8 +61,8 @@ await ctx.start();
 | `群关` / `群管关` | 关闭当前群自动群管 |
 | `命令开` | 开启当前群全部群管命令 |
 | `命令关` | 关闭当前群全部群管命令 |
-| `命令开 名称` | 开启当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`待审核入群`、`同意入群`、`join-list`、`approve-join`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
-| `命令关 名称` | 关闭当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`待审核入群`、`同意入群`、`join-list`、`approve-join`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
+| `命令开 名称` | 开启当前群指定命令 |
+| `命令关 名称` | 关闭当前群指定命令 |
 | `静默开` | 开启当前群静默模式 |
 | `静默关` | 关闭当前群静默模式 |
 | `一键开` | 同时开启自动群管和群管命令 |
@@ -82,6 +82,10 @@ await ctx.start();
 | `撤回 @成员 数量` / `撤回 QQ号 数量` / `recall @成员或QQ号 数量` | 只撤回指定用户的历史消息 |
 | 回复消息后发送 `撤回` | 撤回被回复的消息 |
 | 回复消息后发送 `撤回 数量` | 从被回复消息开始向上撤回若干条 |
+
+可开关命令名称：
+
+`title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`待审核入群`、`同意入群`、`join-list`、`approve-join`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall`
 
 ## 配置
 
