@@ -60,6 +60,8 @@ ${commandStatusText}`,
     {
       title: '管理',
       content: `管理
+待审核入群 / join-list
+同意入群 QQ号 / approve-join QQ号
 踢人 @成员或QQ号 / kick @成员或QQ号
 禁言 @成员或QQ号 [秒数] / mute @成员或QQ号 [秒数]
 撤回 数量 / recall 数量

@@ -5,6 +5,7 @@ export type GroupAdminCommandKey =
   | 'forbiddenWord'
   | 'fileClassification'
   | 'memberCard'
+  | 'joinReview'
   | 'kick'
   | 'mute'
   | 'recall';
@@ -20,6 +21,11 @@ export const groupAdminCommandDefinitions: {
   { key: 'forbiddenWord', label: '违禁词', names: ['添加违禁词', '删除违禁词', '违禁词', 'word-add', 'word-del'] },
   { key: 'fileClassification', label: '文件分类', names: ['文件分类', '群文件分类', 'file-classify'] },
   { key: 'memberCard', label: '名片检查', names: ['名片检查', '群名片检查', 'card-check'] },
+  {
+    key: 'joinReview',
+    label: '入群审核',
+    names: ['待审核入群', '入群审核列表', '同意入群', 'join-list', 'approve-join'],
+  },
   { key: 'kick', label: '踢人', names: ['踢人', '踢', 'kick'] },
   { key: 'mute', label: '禁言', names: ['禁言', 'mute'] },
   { key: 'recall', label: '撤回', names: ['撤回', 'recall'] },

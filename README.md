@@ -37,7 +37,8 @@ await ctx.start();
 ## 功能
 
 - 入群审核：低于最低 QQ 等级的申请自动拒绝，高于阈值的申请发送群内审核通知。
-- 审核回复：管理员或配置的审核员回复审核通知 `y` 同意、`n` 拒绝。
+- 审核回复：管理员或配置的审核员回复审核通知 `y` 同意、`n` 拒绝，也可查看待审核 QQ 列表后按 QQ 号同意。
+- 待审核提醒：定时从 Milky 群通知中检查未处理入群申请，并在群内发送待审核 QQ 号列表。
 - 容量清理：定时检查群容量，名额不足时踢出长期未发言的普通成员。
 - 群文件分类：每天按后缀名检查根目录群文件，自动创建分类文件夹并移动文件，也支持手动触发和切换为内置分类模式。
 - 群名片管理：记录群名片改动，按统一规则或分群规则检查名片格式，支持手动检查和定时检查。
@@ -60,8 +61,8 @@ await ctx.start();
 | `群关` / `群管关` | 关闭当前群自动群管 |
 | `命令开` | 开启当前群全部群管命令 |
 | `命令关` | 关闭当前群全部群管命令 |
-| `命令开 名称` | 开启当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
-| `命令关 名称` | 关闭当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
+| `命令开 名称` | 开启当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`待审核入群`、`同意入群`、`join-list`、`approve-join`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
+| `命令关 名称` | 关闭当前群指定命令，支持 `title`、`添加黑名单`、`blacklist-add`、`添加白名单`、`whitelist-add`、`添加违禁词`、`删除违禁词`、`word-add`、`word-del`、`文件分类`、`file-classify`、`名片检查`、`card-check`、`待审核入群`、`同意入群`、`join-list`、`approve-join`、`踢人`、`踢`、`kick`、`禁言`、`mute`、`撤回`、`recall` |
 | `静默开` | 开启当前群静默模式 |
 | `静默关` | 关闭当前群静默模式 |
 | `一键开` | 同时开启自动群管和群管命令 |
@@ -73,6 +74,8 @@ await ctx.start();
 | `删除违禁词 词语` / `word-del 词语` | 删除违禁词 |
 | `文件分类` / `群文件分类` / `file-classify` | 手动分类当前群根目录群文件 |
 | `名片检查` / `群名片检查` / `card-check` | 手动检查当前群群名片改动和规则 |
+| `待审核入群` / `入群审核列表` / `join-list` | 查看当前群待审核入群申请的 QQ 号列表 |
+| `同意入群 QQ号` / `approve-join QQ号` | 按 QQ 号同意待审核入群申请 |
 | `踢人 @成员` / `踢人 QQ号` / `踢 @成员或QQ号` / `kick @成员或QQ号` | 踢出成员 |
 | `禁言 @成员 [秒数]` / `禁言 QQ号 [秒数]` / `mute @成员或QQ号 [秒数]` | 禁言成员 |
 | `撤回 数量` / `recall 数量` | 撤回命令上方的若干条消息 |
@@ -89,6 +92,8 @@ interface GroupAdminPluginOptions {
   manualRejectionReason?: string;
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
+  pendingJoinRequestNotificationEnabled?: boolean;
+  pendingJoinRequestNotificationCron?: string;
   groupFileClassificationEnabled?: boolean;
   groupFileClassificationMode?: 'extension' | 'category';
   groupFileClassificationCron?: string;
@@ -124,6 +129,8 @@ interface GroupAdminPluginOptions {
 | `manualRejectionReason` | `管理员拒绝入群` | 审核员回复 `n` 时使用的拒绝理由 |
 | `reviewerUserIds` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
 | `moderatorUserIds` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
+| `pendingJoinRequestNotificationEnabled` | `true` | 是否定时检查并提醒待审核入群申请 |
+| `pendingJoinRequestNotificationCron` | `*/10 * * * *` | 待审核入群提醒 cron 表达式 |
 | `groupFileClassificationEnabled` | `true` | 是否启用每日群文件分类 |
 | `groupFileClassificationMode` | `extension` | 群文件分类模式：`extension` 按后缀名建文件夹，`category` 使用分类规则映射到文件夹 |
 | `groupFileClassificationCron` | `0 2 * * *` | 群文件分类 cron 表达式 |

@@ -62,6 +62,8 @@ export const GroupAdminPlugin = definePlugin({
     const manualMuteDurationSeconds = options?.manualMuteDurationSeconds ?? spamMuteDurationSeconds;
     const forbiddenWordMuteDurationSeconds = options?.forbiddenWordMuteDurationSeconds ?? spamMuteDurationSeconds;
     const blacklistRejectionReason = options?.blacklistRejectionReason ?? '已被加入黑名单';
+    const pendingJoinRequestNotificationEnabled = options?.pendingJoinRequestNotificationEnabled ?? true;
+    const pendingJoinRequestNotificationCron = options?.pendingJoinRequestNotificationCron ?? '*/10 * * * *';
     const dataStore = createGroupAdminDataStore(ctx, {
       listDataPath: './data/data.json',
       blacklistUserIds: options?.blacklistUserIds,
@@ -81,6 +83,7 @@ export const GroupAdminPlugin = definePlugin({
       save: saveListData,
     } = dataStore;
     const pendingJoinRequests = new Map<number, PendingJoinRequest>();
+    const notifiedPendingJoinRequests = new Set<string>();
     const spamRecords = new Map<string, { timestamps: number[]; violationCount: number }>();
 
     const isGroupEnabled = (groupId: number): boolean => groupSwitches.get(groupId) ?? true;
@@ -121,6 +124,13 @@ export const GroupAdminPlugin = definePlugin({
     const canUseGroupAdminCommand = (session: Session): boolean =>
       session.raw.message_scene === 'group' &&
       (moderatorUserIds.has(session.raw.sender_id) || session.raw.group_member.role !== 'member');
+
+    const canReviewJoinRequest = (session: Session): boolean =>
+      session.raw.message_scene === 'group' &&
+      (reviewerUserIds.has(session.raw.sender_id) || session.raw.group_member.role !== 'member');
+
+    const getPendingJoinRequestKey = (request: PendingJoinRequest): string =>
+      `${request.groupId}:${request.isFiltered ? 'filtered' : 'normal'}:${request.notificationSeq}`;
 
     const setCommandFeatureSwitch = (groupId: number, commandKey: GroupAdminCommandKey, enabled: boolean) => {
       const switches = commandFeatureSwitches.get(groupId) ?? new Map<GroupAdminCommandKey, boolean>();
@@ -421,10 +431,10 @@ export const GroupAdminPlugin = definePlugin({
       return fallbackMatch ? Number(fallbackMatch[0]) : undefined;
     };
 
-    const findPendingJoinRequestFromNotifications = async (
-      groupId: number,
-      initiatorId: number,
-    ): Promise<PendingJoinRequest | undefined> => {
+    const listPendingJoinRequestsFromNotifications = async (groupId?: number): Promise<PendingJoinRequest[]> => {
+      const requests: PendingJoinRequest[] = [];
+      const seen = new Set<string>();
+
       for (const isFiltered of [false, true]) {
         let cursor: number | undefined;
         for (let page = 0; page < 5; page += 1) {
@@ -438,13 +448,20 @@ export const GroupAdminPlugin = definePlugin({
               continue;
             }
 
-            if (notification.group_id === groupId && notification.initiator_id === initiatorId) {
-              return {
-                groupId: notification.group_id,
-                initiatorId: notification.initiator_id,
-                notificationSeq: notification.notification_seq,
-                isFiltered: notification.is_filtered,
-              };
+            if (groupId !== undefined && notification.group_id !== groupId) {
+              continue;
+            }
+
+            const request = {
+              groupId: notification.group_id,
+              initiatorId: notification.initiator_id,
+              notificationSeq: notification.notification_seq,
+              isFiltered: notification.is_filtered,
+            };
+            const requestKey = getPendingJoinRequestKey(request);
+            if (!seen.has(requestKey)) {
+              seen.add(requestKey);
+              requests.push(request);
             }
           }
 
@@ -456,7 +473,120 @@ export const GroupAdminPlugin = definePlugin({
         }
       }
 
-      return undefined;
+      return requests;
+    };
+
+    const findPendingJoinRequestFromNotifications = async (
+      groupId: number,
+      initiatorId: number,
+    ): Promise<PendingJoinRequest | undefined> => {
+      return (await listPendingJoinRequestsFromNotifications(groupId)).find(
+        (request) => request.initiatorId === initiatorId,
+      );
+    };
+
+    const formatPendingJoinRequestList = (requests: PendingJoinRequest[]): string =>
+      requests.map((request) => String(request.initiatorId)).join('\n');
+
+    const clearPendingJoinRequestCache = (request: PendingJoinRequest) => {
+      notifiedPendingJoinRequests.delete(getPendingJoinRequestKey(request));
+      for (const [messageSeq, cachedRequest] of pendingJoinRequests) {
+        if (cachedRequest.groupId === request.groupId && cachedRequest.initiatorId === request.initiatorId) {
+          pendingJoinRequests.delete(messageSeq);
+        }
+      }
+    };
+
+    const sendPendingJoinRequestNotification = async (
+      groupId: number,
+      requests: PendingJoinRequest[],
+    ): Promise<boolean> => {
+      const sent = await sendGroupMessageIfNotSilent(
+        groupId,
+        msg`当前有待审核入群申请：
+${formatPendingJoinRequestList(requests)}
+
+发送 同意入群 QQ号 通过。`,
+      );
+      return sent !== undefined;
+    };
+
+    const ensureJoinReviewCommandAvailable = async (session: Session): Promise<boolean> => {
+      await listDataReady;
+
+      if (session.raw.message_scene !== 'group') {
+        await replyIfNotSilent(session, msg`请在群聊中使用入群审核命令`);
+        return false;
+      }
+
+      if (!isGroupEnabled(session.raw.peer_id)) {
+        await replyIfNotSilent(session, msg`本群群管已关闭`);
+        return false;
+      }
+
+      if (!areCommandsEnabled(session.raw.peer_id)) {
+        await replyIfNotSilent(session, msg`本群群管命令已关闭`);
+        return false;
+      }
+
+      if (!isCommandFeatureEnabled(session.raw.peer_id, 'joinReview')) {
+        await replyIfNotSilent(session, msg`本群 ${getGroupAdminCommandLabel('joinReview')} 命令已关闭`);
+        return false;
+      }
+
+      if (!canReviewJoinRequest(session)) {
+        await replyIfNotSilent(session, msg`你没有权限处理入群申请`);
+        return false;
+      }
+
+      return true;
+    };
+
+    const executePendingJoinRequestListCommand = async (session: Session) => {
+      if (!(await ensureJoinReviewCommandAvailable(session))) {
+        return;
+      }
+
+      const requests = await listPendingJoinRequestsFromNotifications(session.raw.peer_id);
+      if (requests.length === 0) {
+        await replyIfNotSilent(session, msg`当前没有待审核入群申请`);
+        return;
+      }
+
+      await replyIfNotSilent(
+        session,
+        msg`待审核入群申请 QQ 列表：
+${formatPendingJoinRequestList(requests)}
+
+发送 同意入群 QQ号 通过。`,
+      );
+    };
+
+    const executeAcceptPendingJoinRequestCommand = async (session: Session, target: milky.IncomingSegment[]) => {
+      if (!(await ensureJoinReviewCommandAvailable(session))) {
+        return;
+      }
+
+      const initiatorId = parseModerationTarget(target);
+      if (!initiatorId) {
+        await replyIfNotSilent(session, msg`请提供要同意入群的 QQ 号：同意入群 QQ号`);
+        return;
+      }
+
+      const request = await findPendingJoinRequestFromNotifications(session.raw.peer_id, initiatorId);
+      if (!request) {
+        await replyIfNotSilent(session, msg`没有找到 ${initiatorId} 的待审核入群申请`);
+        return;
+      }
+
+      await ctx.client.accept_group_request({
+        group_id: request.groupId,
+        notification_seq: request.notificationSeq,
+        notification_type: 'join_request',
+        is_filtered: request.isFiltered,
+      });
+      clearPendingJoinRequestCache(request);
+      await replyIfNotSilent(session, msg`已同意 ${request.initiatorId} 的入群申请`);
     };
 
     const resolvePendingJoinRequest = async (
@@ -543,6 +673,56 @@ export const GroupAdminPlugin = definePlugin({
       blacklistedUserIds,
       kickBlacklistedMember,
     });
+
+    if (pendingJoinRequestNotificationEnabled) {
+      ctx.scheduler.expression(pendingJoinRequestNotificationCron, async () => {
+        try {
+          await listDataReady;
+
+          for (const request of pendingJoinRequests.values()) {
+            notifiedPendingJoinRequests.add(getPendingJoinRequestKey(request));
+          }
+
+          const requests = await listPendingJoinRequestsFromNotifications();
+          const activeRequestKeys = new Set(requests.map(getPendingJoinRequestKey));
+          for (const requestKey of notifiedPendingJoinRequests) {
+            if (!activeRequestKeys.has(requestKey)) {
+              notifiedPendingJoinRequests.delete(requestKey);
+            }
+          }
+
+          const { groups } = await ctx.client.get_group_list();
+          const groupIds = new Set(groups.map((group) => group.group_id));
+          const requestsByGroup = new Map<number, PendingJoinRequest[]>();
+          for (const request of requests) {
+            const requestKey = getPendingJoinRequestKey(request);
+            if (
+              !groupIds.has(request.groupId) ||
+              !isGroupEnabled(request.groupId) ||
+              !areCommandsEnabled(request.groupId) ||
+              !isCommandFeatureEnabled(request.groupId, 'joinReview') ||
+              notifiedPendingJoinRequests.has(requestKey)
+            ) {
+              continue;
+            }
+
+            const groupRequests = requestsByGroup.get(request.groupId) ?? [];
+            groupRequests.push(request);
+            requestsByGroup.set(request.groupId, groupRequests);
+          }
+
+          for (const [groupId, groupRequests] of requestsByGroup) {
+            if (await sendPendingJoinRequestNotification(groupId, groupRequests)) {
+              for (const request of groupRequests) {
+                notifiedPendingJoinRequests.add(getPendingJoinRequestKey(request));
+              }
+            }
+          }
+        } catch (error) {
+          ctx.logger.error('待审核入群申请通知失败', error);
+        }
+      });
+    }
 
     ctx.router
       .command('help')
@@ -677,6 +857,21 @@ export const GroupAdminPlugin = definePlugin({
       .alias('群名片检查', 'card-check')
       .execute(async (session) => {
         await executeGroupMemberCardCheckCommand(session);
+      });
+
+    ctx.router
+      .command('待审核入群')
+      .alias('入群审核列表', 'join-list')
+      .execute(async (session) => {
+        await executePendingJoinRequestListCommand(session);
+      });
+
+    ctx.router
+      .command('同意入群')
+      .alias('approve-join')
+      .arg('target', param.catchAll())
+      .execute(async (session, { target }) => {
+        await executeAcceptPendingJoinRequestCommand(session, target);
       });
 
     ctx.router
@@ -912,7 +1107,11 @@ export const GroupAdminPlugin = definePlugin({
           return;
         }
 
-        if (!isGroupEnabled(session.raw.peer_id) || !areCommandsEnabled(session.raw.peer_id)) {
+        if (
+          !isGroupEnabled(session.raw.peer_id) ||
+          !areCommandsEnabled(session.raw.peer_id) ||
+          !isCommandFeatureEnabled(session.raw.peer_id, 'joinReview')
+        ) {
           return;
         }
 
@@ -921,12 +1120,10 @@ export const GroupAdminPlugin = definePlugin({
           return;
         }
 
-        if (!reviewerUserIds.has(session.raw.sender_id) && session.raw.group_member.role === 'member') {
+        if (!canReviewJoinRequest(session)) {
           await replyIfNotSilent(session, msg`你没有权限处理入群申请`);
           return;
         }
-
-        pendingJoinRequests.delete(reply.data.message_seq);
 
         if (decision === 'y') {
           await ctx.client.accept_group_request({
@@ -935,6 +1132,7 @@ export const GroupAdminPlugin = definePlugin({
             notification_type: 'join_request',
             is_filtered: request.isFiltered,
           });
+          clearPendingJoinRequestCache(request);
           await replyIfNotSilent(session, msg`已同意 ${request.initiatorId} 的入群申请`);
           return;
         }
@@ -946,6 +1144,7 @@ export const GroupAdminPlugin = definePlugin({
           is_filtered: request.isFiltered,
           reason: manualRejectionReason,
         });
+        clearPendingJoinRequestCache(request);
         await replyIfNotSilent(session, msg`已拒绝 ${request.initiatorId} 的入群申请`);
       });
 

@@ -4,6 +4,8 @@ export interface GroupAdminPluginOptions {
   manualRejectionReason?: string;
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
+  pendingJoinRequestNotificationEnabled?: boolean;
+  pendingJoinRequestNotificationCron?: string;
   groupFileClassificationEnabled?: boolean;
   groupFileClassificationMode?: 'extension' | 'category';
   groupFileClassificationCron?: string;
