@@ -1,6 +1,7 @@
 import { type Context, msg, seg } from '@fraqjs/fraq';
 
 import type { GroupAdminCommandKey } from './command-definitions';
+import type { PendingJoinRequest } from './join-review';
 import { type GroupMemberCardManagementOptions, observeGroupMemberCard } from './member-card-management';
 import { canBotModerateTarget, getMessagePlainText } from './message-utils';
 
@@ -19,15 +20,7 @@ export function registerEventHandlers(options: {
   forbiddenWords: ReadonlySet<string>;
   memberCardSnapshots: Map<number, Map<number, string>>;
   groupMemberCardManagement: GroupMemberCardManagementOptions;
-  pendingJoinRequests: Map<
-    number,
-    {
-      groupId: number;
-      initiatorId: number;
-      notificationSeq: number;
-      isFiltered: boolean;
-    }
-  >;
+  pendingJoinRequests: Map<number, PendingJoinRequest>;
   spamRecords: Map<string, { timestamps: number[]; violationCount: number }>;
   listDataReady: Promise<void>;
   saveListData: () => Promise<void>;
