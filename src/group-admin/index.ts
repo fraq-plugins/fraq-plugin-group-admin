@@ -566,44 +566,6 @@ export const GroupAdminPlugin = definePlugin({
     });
 
     ctx.router
-      .command('title')
-      .arg('title', param.greedy())
-      .execute(async (session, { title }) => {
-        await listDataReady;
-
-        if (session.raw.message_scene !== 'group') {
-          await replyIfNotSilent(session, msg`请在群聊中使用 title 指令`);
-          return;
-        }
-
-        if (!isGroupEnabled(session.raw.peer_id)) {
-          await replyIfNotSilent(session, msg`本群群管已关闭`);
-          return;
-        }
-
-        if (!areCommandsEnabled(session.raw.peer_id)) {
-          await replyIfNotSilent(session, msg`本群群管命令已关闭`);
-          return;
-        }
-
-        if (!isCommandFeatureEnabled(session.raw.peer_id, 'title')) {
-          await replyIfNotSilent(session, msg`本群 ${getGroupAdminCommandLabel('title')} 命令已关闭`);
-          return;
-        }
-
-        if (new TextEncoder().encode(title).length > 18) {
-          await replyIfNotSilent(session, msg`专属头衔不能超过 18 字节`);
-          return;
-        }
-
-        await ctx.client.set_group_member_special_title({
-          group_id: session.raw.peer_id,
-          user_id: session.raw.sender_id,
-          special_title: title,
-        });
-      });
-
-    ctx.router
       .command('文件分类')
       .alias('群文件分类', 'file-classify')
       .execute(async (session) => {

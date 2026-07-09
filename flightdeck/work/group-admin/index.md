@@ -143,6 +143,7 @@ Blocked/known:
 - Improved join-review decisions for `0.8.1`: when an in-memory pending request is missing, replying `y`/`n` to the review message now parses the applicant QQ from the replied notification and resolves the pending join request from Milky `get_group_notifications` instead of requiring local JSON persistence.
 - Added pending join-request reminders for `0.8.2`: the plugin periodically reads Milky `get_group_notifications`, sends a QQ-number list for unreviewed join requests, and supports `待审核入群` / `join-list` plus `同意入群 QQ号` / `approve-join QQ号` for reviewers.
 - Refactored join-review logic into `src/group-admin/join-review.ts` so `src/group-admin/index.ts` only wires the feature into the plugin.
+- Removed the group special-title command for `0.9.0`: `title` is no longer registered, no longer appears in help/README, and is no longer a configurable command feature.
 
 ## Open questions
 

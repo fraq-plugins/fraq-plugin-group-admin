@@ -1,5 +1,4 @@
 export type GroupAdminCommandKey =
-  | 'title'
   | 'blacklist'
   | 'whitelist'
   | 'forbiddenWord'
@@ -15,7 +14,6 @@ export const groupAdminCommandDefinitions: {
   label: string;
   names: readonly string[];
 }[] = [
-  { key: 'title', label: 'title', names: ['title', '头衔', '专属头衔'] },
   { key: 'blacklist', label: '添加黑名单', names: ['添加黑名单', '黑名单', 'blacklist-add'] },
   { key: 'whitelist', label: '添加白名单', names: ['添加白名单', '白名单', 'whitelist-add'] },
   { key: 'forbiddenWord', label: '违禁词', names: ['添加违禁词', '删除违禁词', '违禁词', 'word-add', 'word-del'] },

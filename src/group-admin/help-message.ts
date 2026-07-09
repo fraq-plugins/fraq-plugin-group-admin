@@ -71,7 +71,6 @@ ${commandStatusText}`,
     {
       title: '其他',
       content: `其他
-title 头衔：设置专属头衔
 回复审核通知 y 通过，n 拒绝`,
     },
   ];
