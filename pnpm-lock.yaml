@@ -12,8 +12,8 @@ importers:
         specifier: ^2.5.1
         version: 2.5.2
       '@fraqjs/fraq':
-        specifier: ^0.12.0
-        version: 0.12.0
+        specifier: ^0.14.0
+        version: 0.14.0
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.2
@@ -272,8 +272,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fraqjs/fraq@0.12.0':
-    resolution: {integrity: sha512-f3jA5DtlmyhUPqN+Ujk6348NOVe0UvZ19ulm+VvkSan6UYJo+F0mvdyWql6+g8aXZtFvMllZD/leDlfd9k9bwA==}
+  '@fraqjs/fraq@0.14.0':
+    resolution: {integrity: sha512-oCVhcquY244zKen3OKD7xa/u49qSbWWTeUQajVaXDfWfklSMeCDTU+hbfXl+qo7gp1P4LQYXAGfyQYCJg8Y1kA==}
     engines: {node: '>=22'}
 
   '@jridgewell/gen-mapping@0.3.13':
@@ -747,7 +747,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@fraqjs/fraq@0.12.0':
+  '@fraqjs/fraq@0.14.0':
     dependencies:
       mitt: 3.0.1
 

@@ -8,7 +8,7 @@ Fraq 的 Milky 群管理插件。它把入群审核、刷屏处理、违禁词�
 pnpm add fraq-plugin-group-admin
 ```
 
-这个包需要 Node.js 22+，并依赖 `@fraqjs/fraq ^0.12.0`。
+这个包需要 Node.js 22+，并依赖 `@fraqjs/fraq ^0.14.0`。
 
 ## 使用
 

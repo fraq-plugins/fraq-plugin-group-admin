@@ -2,11 +2,11 @@
 
 ## State
 
-Implemented the first group-admin features: automatically reject direct group join requests when the applicant's QQ level is below the configured minimum, send manual review notifications for higher-level applicants, run a daily capacity cleanup, detect group spam across every message segment, notify the group when members leave or are kicked, provide manual kick/mute commands, recall group messages by reply/history anchor, maintain persistent blacklist/whitelist data, and persist per-group group-admin/command switches. Reviewers can reply to the notification with `y` to accept or `n` to reject; only group owners, admins, and configured reviewer user IDs may operate it. Default minimum is level 5, so level 4 and below are rejected. Merged `fraqjs/plugin-title-grant` behavior into the group-admin plugin. The repo is now shaped as a reusable `fraq-plugin-group-admin` package with `src/index.ts`, `src/group-admin.ts`, `src/scheduler.ts`, `test/smoke.ts`, `tsdown.config.ts`, and package metadata modeled after `fraqjs/plugin-template`.
+Implemented the group-admin moderation package and its reusable module structure. The package is now compatible with `@fraqjs/fraq ^0.14.0` as `fraq-plugin-group-admin@0.9.1`; the upgrade required dependency, lockfile, and documentation changes but no runtime source changes.
 
 ## Next
 
-- Complete npm two-factor authentication, then publish `fraq-plugin-group-admin@0.5.0`.
+- Publish `fraq-plugin-group-admin@0.9.1` when npm authentication is available.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
@@ -15,7 +15,6 @@ Implemented the first group-admin features: automatically reject direct group jo
 - flightdeck/knowledge/fraq/duplicate-command-processes.md
 - flightdeck/knowledge/fraq/mock-version-compat.md
 - flightdeck/knowledge/fraq/plugin-reuse-first.md
-- flightdeck/knowledge/fraq/title-grant-port.md
 - flightdeck/knowledge/milky/group-join-review.md
 - flightdeck/knowledge/milky/group-message-moderation.md
 
@@ -123,7 +122,7 @@ Done:
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
-- Publishing `0.5.0` is currently blocked because `npm whoami` reports `ENEEDAUTH`; npm shows `fraq-plugin-group-admin` is owned by `wanjunhui <2401128923@qq.com>` and currently has published versions `0.1.0`, `0.1.1`, and `0.1.2`.
+- Publishing `0.9.1` still requires npm authentication; authentication was not retried during the Fraq 0.14 compatibility update.
 - Added forbidden-word moderation for `0.6.0`: persisted `forbiddenWords`, configurable `forbiddenWordMuteDurationSeconds`, `/添加违禁词` and `/删除违禁词` commands with `word-add`/`word-del` aliases, and automatic mute when ordinary non-whitelisted members send matching text.
 - Added the project rule to check official Fraq plugins before implementing new features, with `random` noted as an example of existing reusable plugin behavior.
 - Refactored group-admin into a directory-based module with `src/group-admin/index.ts` as the plugin entry and separate files for command definitions, data persistence, event handlers, scheduled tasks, message utilities, and public option types.
@@ -144,6 +143,7 @@ Blocked/known:
 - Added pending join-request reminders for `0.8.2`: the plugin periodically reads Milky `get_group_notifications`, sends a QQ-number list for unreviewed join requests, and supports `待审核入群` / `join-list` plus `同意入群 QQ号` / `approve-join QQ号` for reviewers.
 - Refactored join-review logic into `src/group-admin/join-review.ts` so `src/group-admin/index.ts` only wires the feature into the plugin.
 - Removed the group special-title command for `0.9.0`: `title` is no longer registered, no longer appears in help/README, and is no longer a configurable command feature.
+- Upgraded peer and development compatibility from `@fraqjs/fraq ^0.12.0` to `^0.14.0`, refreshed the lockfile and README requirement, and bumped the package to `0.9.1`. Fraq 0.14 required no runtime source changes; `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` passed.
 
 ## Open questions
 

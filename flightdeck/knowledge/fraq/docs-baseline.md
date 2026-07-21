@@ -4,20 +4,23 @@ READ WHEN: before any Fraq project implementation, command/router change, plugin
 
 ---
 
-Source read on 2026-07-03:
+Source read on 2026-07-22:
 - https://fraq.dev/docs
 - https://fraq.dev/llms-full.txt
 
 Operational baseline:
+- The current core package baseline is `@fraqjs/fraq 0.14.0`; reusable plugins targeting the current release should declare `@fraqjs/fraq ^0.14.0` in both peer and development dependencies.
 - Fraq is a TypeScript chatbot framework for the Milky protocol, which uses HTTP/WebSocket for QQ bot integrations.
 - Runtime should be Node.js 22+ or another server-side JavaScript runtime with WebSocket API support. TypeScript plus `tsx` is the recommended development path.
 - Install core Fraq with `@fraqjs/fraq`.
 - Create a bot with `Context.fromUrl(milkyUrl, options)` for a real Milky endpoint, or `Context.fromClient(client)` for mock/custom clients. Call `ctx.start()` after setup.
 - Core surfaces on `Context`: `ctx.router`, `ctx.client`, `ctx.logger`, `ctx.on`, `ctx.install`, `ctx.provide`, `ctx.resolve`, `ctx.fork`, `ctx.timeout`, `ctx.interval`, and `ctx.stop`.
+- `ctx.hookApi(endpoint, hook)` or `ctx.hookApi(hook)` can intercept Milky API calls; it returns a disposer that removes the hook.
 - Commands use `ctx.router.command(name).arg(...).execute(...)`. Parameters include `param.literal`, `param.str`, `param.num`, `param.greedy`, `param.catchAll`, `param.union`, and `param.segment`.
 - `param.catchAll()` consumes all remaining text and non-text segments and must be the final parameter. `param.greedy()` consumes only the rest of the current text segment.
 - Router rules are tried in definition order. Ambiguous overloads can shadow later routes, especially when `param.str()` appears before narrower numeric or literal patterns.
 - Use `ctx.router.group` for subcommands, `rawPattern` for direct pattern matching, `.describe()`, `.alias()`, and `.hide()` for command metadata.
+- Fraq 0.14 applies configured activation at the first literal in a raw pattern; top-level raw patterns without a literal remain direct. Recheck reply-aware raw patterns when a deployment introduces mention or prefix activation.
 - A command `Session` exposes `selfId`, `raw`, `reply(textOrSegments, options)`, and `reaction(type, reactionId)`. Use `ctx.client` for lower-level Milky API calls.
 - Prefer deployment-side filtering with `ctx.fork(..., filter)` over plugin-internal `ctx.router.filter` for permission/scope control, unless the plugin specifically owns that routing policy.
 - Fraq does not log to terminal by default. Pass `logHandler` when creating `Context`; `@fraqjs/color-log` and `combineLogHandlers` are official options.
