@@ -34,6 +34,23 @@ ctx.install(GroupAdminPlugin, {
 await ctx.start();
 ```
 
+## 指令触发方式
+
+本插件兼容 [Fraq CLI 的 `activation` 配置](https://fraq.dev/docs/deployment/cli/activation)。普通命令、回复审核通知后的 `y` / `n`，以及回复消息后的 `撤回` / `recall` 都会遵循同一套触发规则。
+
+Fraq 会自动给本插件注册的路由附加 `plugin: group-admin` 元信息，因此可以只覆盖本插件。例如，要求先 `@` 机器人并使用 `/` 前缀：
+
+```yaml
+activation:
+  default: direct
+  overrides:
+    - match:
+        plugin: group-admin
+      rule: { type: mention, prefix: '/' }
+```
+
+启用以上配置后，应发送 `@机器人 /help`、回复审核通知后发送 `@机器人 /y`，或回复目标消息后发送 `@机器人 /撤回`。下方命令表仍以默认的 `direct` 触发方式书写。
+
 ## 功能
 
 - 入群审核：低于最低 QQ 等级的申请自动拒绝，高于阈值的申请发送群内审核通知。

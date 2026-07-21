@@ -1,6 +1,7 @@
 import { type Context, type milky, msg, param, type Session } from '@fraqjs/fraq';
 
 import type { SchedulerService } from '../scheduler';
+import { registerReplyLiteralRawRoutes } from './activation-routes';
 import { type GroupAdminCommandKey, getGroupAdminCommandLabel } from './command-definitions';
 import { getMessagePlainText, parseModerationTarget } from './message-utils';
 
@@ -311,55 +312,51 @@ ${formatPendingJoinRequestList(requests)}
       await executeAcceptPendingJoinRequestCommand(session, target);
     });
 
-  ctx.router
-    .rawPattern()
-    .arg('reply', param.segment('reply'))
-    .arg('decision', param.union('y', 'n'))
-    .execute(async (session, { reply, decision }) => {
-      await listDataReady;
+  registerReplyLiteralRawRoutes(ctx.router, ['y', 'n'], async (session, reply, decision) => {
+    await listDataReady;
 
-      if (session.raw.message_scene !== 'group') {
-        return;
-      }
+    if (session.raw.message_scene !== 'group') {
+      return;
+    }
 
-      if (
-        !isGroupEnabled(session.raw.peer_id) ||
-        !areCommandsEnabled(session.raw.peer_id) ||
-        !isCommandFeatureEnabled(session.raw.peer_id, 'joinReview')
-      ) {
-        return;
-      }
+    if (
+      !isGroupEnabled(session.raw.peer_id) ||
+      !areCommandsEnabled(session.raw.peer_id) ||
+      !isCommandFeatureEnabled(session.raw.peer_id, 'joinReview')
+    ) {
+      return;
+    }
 
-      const request = await resolvePendingJoinRequest(session.raw.peer_id, reply);
-      if (!request) {
-        return;
-      }
+    const request = await resolvePendingJoinRequest(session.raw.peer_id, reply);
+    if (!request) {
+      return;
+    }
 
-      if (!canReviewJoinRequest(session)) {
-        await replyIfNotSilent(session, msg`你没有权限处理入群申请`);
-        return;
-      }
+    if (!canReviewJoinRequest(session)) {
+      await replyIfNotSilent(session, msg`你没有权限处理入群申请`);
+      return;
+    }
 
-      if (decision === 'y') {
-        await ctx.client.accept_group_request({
-          group_id: request.groupId,
-          notification_seq: request.notificationSeq,
-          notification_type: 'join_request',
-          is_filtered: request.isFiltered,
-        });
-        clearPendingJoinRequestCache(request);
-        await replyIfNotSilent(session, msg`已同意 ${request.initiatorId} 的入群申请`);
-        return;
-      }
-
-      await ctx.client.reject_group_request({
+    if (decision === 'y') {
+      await ctx.client.accept_group_request({
         group_id: request.groupId,
         notification_seq: request.notificationSeq,
         notification_type: 'join_request',
         is_filtered: request.isFiltered,
-        reason: manualRejectionReason,
       });
       clearPendingJoinRequestCache(request);
-      await replyIfNotSilent(session, msg`已拒绝 ${request.initiatorId} 的入群申请`);
+      await replyIfNotSilent(session, msg`已同意 ${request.initiatorId} 的入群申请`);
+      return;
+    }
+
+    await ctx.client.reject_group_request({
+      group_id: request.groupId,
+      notification_seq: request.notificationSeq,
+      notification_type: 'join_request',
+      is_filtered: request.isFiltered,
+      reason: manualRejectionReason,
     });
+    clearPendingJoinRequestCache(request);
+    await replyIfNotSilent(session, msg`已拒绝 ${request.initiatorId} 的入群申请`);
+  });
 }

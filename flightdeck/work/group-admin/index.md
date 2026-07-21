@@ -2,16 +2,17 @@
 
 ## State
 
-Implemented the group-admin moderation package and its reusable module structure. The package is now compatible with `@fraqjs/fraq ^0.14.0` as `fraq-plugin-group-admin@0.9.1`; the upgrade required dependency, lockfile, and documentation changes but no runtime source changes.
+Implemented the group-admin moderation package and its reusable module structure. The package is compatible with `@fraqjs/fraq ^0.14.0` as `fraq-plugin-group-admin@0.9.2`; ordinary commands and reply-aware join-review/recall raw patterns now follow Fraq CLI activation policies.
 
 ## Next
 
-- Publish `fraq-plugin-group-admin@0.9.1` when npm authentication is available.
+- Publish `fraq-plugin-group-admin@0.9.2` when npm authentication is available.
 - Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
 
 ## Read now
 
 - flightdeck/knowledge/fraq/docs-baseline.md
+- flightdeck/knowledge/fraq/activation-raw-patterns.md
 - flightdeck/knowledge/fraq/duplicate-command-processes.md
 - flightdeck/knowledge/fraq/mock-version-compat.md
 - flightdeck/knowledge/fraq/plugin-reuse-first.md
@@ -122,7 +123,7 @@ Done:
 
 Blocked/known:
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
-- Publishing `0.9.1` still requires npm authentication; authentication was not retried during the Fraq 0.14 compatibility update.
+- Publishing `0.9.2` still requires npm authentication; authentication was not retried during the activation compatibility update.
 - Added forbidden-word moderation for `0.6.0`: persisted `forbiddenWords`, configurable `forbiddenWordMuteDurationSeconds`, `/添加违禁词` and `/删除违禁词` commands with `word-add`/`word-del` aliases, and automatic mute when ordinary non-whitelisted members send matching text.
 - Added the project rule to check official Fraq plugins before implementing new features, with `random` noted as an example of existing reusable plugin behavior.
 - Refactored group-admin into a directory-based module with `src/group-admin/index.ts` as the plugin entry and separate files for command definitions, data persistence, event handlers, scheduled tasks, message utilities, and public option types.
@@ -144,6 +145,7 @@ Blocked/known:
 - Refactored join-review logic into `src/group-admin/join-review.ts` so `src/group-admin/index.ts` only wires the feature into the plugin.
 - Removed the group special-title command for `0.9.0`: `title` is no longer registered, no longer appears in help/README, and is no longer a configurable command feature.
 - Upgraded peer and development compatibility from `@fraqjs/fraq ^0.12.0` to `^0.14.0`, refreshed the lockfile and README requirement, and bumped the package to `0.9.1`. Fraq 0.14 required no runtime source changes; `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` passed.
+- Adapted reply-aware join-review and recall raw patterns to Fraq CLI activation policies for `0.9.2`. Shared route helpers register each command/alias with `param.literal()` instead of `param.union()`, smoke coverage verifies prefix rejection/matching for plain and reply-segment messages, and README documents a `plugin: group-admin` activation override. `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` passed.
 
 ## Open questions
 

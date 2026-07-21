@@ -2,6 +2,11 @@ import { definePlugin, type milky, msg, param, type Session, seg } from '@fraqjs
 
 import { SchedulerService } from '../scheduler';
 import {
+  registerLiteralRawRoutes,
+  registerReplyLiteralCatchAllRawRoutes,
+  registerReplyLiteralRawRoutes,
+} from './activation-routes';
+import {
   type GroupAdminCommandKey,
   getGroupAdminCommandLabel,
   groupAdminCommandDefinitions,
@@ -777,29 +782,15 @@ export const GroupAdminPlugin = definePlugin({
         await executeRecallCommand(session, target);
       });
 
-    ctx.router
-      .rawPattern()
-      .arg('command', param.union('撤回', 'recall'))
-      .execute(async (session) => {
-        await executeRecallCommand(session, []);
-      });
-
-    ctx.router
-      .rawPattern()
-      .arg('reply', param.segment('reply'))
-      .arg('command', param.union('撤回', 'recall'))
-      .arg('target', param.catchAll())
-      .execute(async (session, { reply, target }) => {
-        await executeRecallCommand(session, [reply, ...target]);
-      });
-
-    ctx.router
-      .rawPattern()
-      .arg('reply', param.segment('reply'))
-      .arg('command', param.union('撤回', 'recall'))
-      .execute(async (session, { reply }) => {
-        await executeRecallCommand(session, [reply]);
-      });
+    registerLiteralRawRoutes(ctx.router, ['撤回', 'recall'], async (session) => {
+      await executeRecallCommand(session, []);
+    });
+    registerReplyLiteralCatchAllRawRoutes(ctx.router, ['撤回', 'recall'], async (session, reply, _literal, target) => {
+      await executeRecallCommand(session, [reply, ...target]);
+    });
+    registerReplyLiteralRawRoutes(ctx.router, ['撤回', 'recall'], async (session, reply) => {
+      await executeRecallCommand(session, [reply]);
+    });
 
     registerEventHandlers({
       ctx,
