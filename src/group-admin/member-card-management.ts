@@ -1,6 +1,7 @@
 import { type Context, type milky, msg, seg } from '@fraqjs/fraq';
 
-import { canBotModerateTarget } from './message-utils';
+import type { GroupAdminApi } from './api';
+import { canBotModerateTarget } from './data-processing';
 
 export type GroupMemberCardRuleScope = 'global' | 'group';
 export type GroupMemberCardViolationAction = 'notify' | 'reset';
@@ -21,7 +22,7 @@ export interface GroupMemberCardCheckResult {
   failed: number;
 }
 
-type GroupMemberCardContext = Pick<Context, 'client' | 'logger'>;
+type GroupMemberCardContext = Pick<Context, 'logger'> & { api: GroupAdminApi };
 
 export function getGroupMemberCardPattern(
   groupId: number,
@@ -64,7 +65,7 @@ async function resetMemberCard(options: {
     return false;
   }
 
-  await ctx.client.set_group_member_card({
+  await ctx.api.set_group_member_card({
     group_id: groupId,
     user_id: member.user_id,
     card,
@@ -84,12 +85,12 @@ export async function checkGroupMemberCards(options: {
   const pattern = compilePattern(getGroupMemberCardPattern(groupId, management));
   const violationAction = management.violationAction ?? 'notify';
   const groupCards = getStoredGroupCards(cardSnapshots, groupId);
-  const { member: botMember } = await ctx.client.get_group_member_info({
+  const { member: botMember } = await ctx.api.get_group_member_info({
     group_id: groupId,
     user_id: botUserId,
     no_cache: true,
   });
-  const { members } = await ctx.client.get_group_member_list({
+  const { members } = await ctx.api.get_group_member_list({
     group_id: groupId,
     no_cache: true,
   });

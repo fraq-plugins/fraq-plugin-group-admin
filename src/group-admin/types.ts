@@ -1,9 +1,14 @@
 export interface GroupAdminPluginOptions {
+  /** Explicit groups managed by this plugin instance. An empty or omitted list is fail-closed. */
+  groupIds?: number[];
+  /** Resolved from the Fraq CLI app working directory. */
+  dataPath?: string;
   minimumAllowedLevel?: number;
   rejectionReason?: string;
   manualRejectionReason?: string;
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
+  joinReviewEnabled?: boolean;
   pendingJoinRequestNotificationEnabled?: boolean;
   pendingJoinRequestNotificationCron?: string;
   groupFileClassificationEnabled?: boolean;
@@ -17,6 +22,7 @@ export interface GroupAdminPluginOptions {
   groupMemberCardGroupPatterns?: Record<string, string>;
   groupMemberCardViolationAction?: 'notify' | 'reset';
   groupMemberCardCheckCron?: string;
+  inactiveCleanupEnabled?: boolean;
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;
@@ -29,6 +35,7 @@ export interface GroupAdminPluginOptions {
   forbiddenWordMuteDurationSeconds?: number;
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
+  blacklistCleanupEnabled?: boolean;
   blacklistCleanupCron?: string;
   whitelistUserIds?: number[];
 }

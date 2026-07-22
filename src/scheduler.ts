@@ -72,7 +72,7 @@ class CronField {
   }
 }
 
-class TimeExpression {
+export class TimeExpression {
   private readonly minute: CronField;
   private readonly hour: CronField;
   private readonly dayOfMonth: CronField;
@@ -101,6 +101,10 @@ class TimeExpression {
       this.dayOfWeek.matches(date.getDay())
     );
   }
+}
+
+export function validateCronExpression(expressionText: string): void {
+  new TimeExpression(expressionText);
 }
 
 class DateTimeParser {

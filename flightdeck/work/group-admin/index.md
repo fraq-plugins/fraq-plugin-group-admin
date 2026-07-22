@@ -2,12 +2,12 @@
 
 ## State
 
-Implemented the group-admin moderation package and its reusable module structure. The package is compatible with `@fraqjs/fraq ^0.14.0` as `fraq-plugin-group-admin@0.9.2`; ordinary commands and reply-aware join-review/recall raw patterns now follow Fraq CLI activation policies.
+Refactored the package as `fraq-plugin-group-admin@0.10.0` for the actual Fraq CLI 0.7 loading model. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic.
 
 ## Next
 
-- Publish `fraq-plugin-group-admin@0.9.2` when npm authentication is available.
-- Choose the next group-admin moderation feature or adjust configuration if the threshold/rejection text should be group-specific.
+- Publish `fraq-plugin-group-admin@0.10.0` when npm authentication is available.
+- Configure deployment `groupIds` and explicitly opt into the required automatic tasks.
 
 ## Read now
 
@@ -16,6 +16,7 @@ Implemented the group-admin moderation package and its reusable module structure
 - flightdeck/knowledge/fraq/duplicate-command-processes.md
 - flightdeck/knowledge/fraq/mock-version-compat.md
 - flightdeck/knowledge/fraq/plugin-reuse-first.md
+- flightdeck/knowledge/fraq/cli-plugin-compatibility.md
 - flightdeck/knowledge/milky/group-join-review.md
 - flightdeck/knowledge/milky/group-message-moderation.md
 
@@ -146,6 +147,9 @@ Blocked/known:
 - Removed the group special-title command for `0.9.0`: `title` is no longer registered, no longer appears in help/README, and is no longer a configurable command feature.
 - Upgraded peer and development compatibility from `@fraqjs/fraq ^0.12.0` to `^0.14.0`, refreshed the lockfile and README requirement, and bumped the package to `0.9.1`. Fraq 0.14 required no runtime source changes; `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` passed.
 - Adapted reply-aware join-review and recall raw patterns to Fraq CLI activation policies for `0.9.2`. Shared route helpers register each command/alias with `param.literal()` instead of `param.union()`, smoke coverage verifies prefix rejection/matching for plain and reply-segment messages, and README documents a `plugin: group-admin` activation override. `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` passed.
+- Tagged the pre-refactor state as annotated tag `v0.9.2` at `a08af7c`.
+- Refactored `0.10.0` around the Fraq CLI default-export loader: removed the SchedulerService injection requirement, centralized commands/API/data/config/models/scope, added fail-closed `groupIds`, opt-in automatic tasks, stable activation tags, runtime config validation, and shared serialized atomic persistence.
+- Added CLI-equivalent startup, activation/tag, group scope, scheduled-scope, invalid-config, and concurrent-persistence smoke coverage. `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` pass.
 
 ## Open questions
 

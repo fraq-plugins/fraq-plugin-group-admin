@@ -10,14 +10,31 @@ pnpm add fraq-plugin-group-admin
 
 这个包需要 Node.js 22+，并依赖 `@fraqjs/fraq ^0.14.0`。
 
-## 使用
+## Fraq CLI 使用
 
-先安装 `SchedulerPlugin`，再安装 `GroupAdminPlugin`。群管插件会注入 `SchedulerService` 来执行每日清理任务。
+插件默认导出已经包含群管所需的调度能力，Fraq CLI 只加载默认导出即可，不需要额外安装本包的命名导出。`groupIds` 是显式安全边界；省略或传空数组时，插件会启动但不会管理任何群。
+
+```yaml
+configVersion: 1
+fraqVersion: ^0.14.0
+milky:
+  url: http://127.0.0.1:30001/
+plugins:
+  group-admin:
+    groupIds: [123456789]
+    reviewerUserIds: [123456789]
+    moderatorUserIds: [123456789]
+    joinReviewEnabled: true
+```
+
+CLI 会在项目的 `app` 目录运行生成的入口，因此默认数据文件位于 `app/data/data.json`。可用 `dataPath` 明确指定其他路径。
+
+## 代码方式使用
 
 ```ts
 import { createColoredLogHandler } from '@fraqjs/color-log';
 import { Context } from '@fraqjs/fraq';
-import GroupAdminPlugin, { SchedulerPlugin } from 'fraq-plugin-group-admin';
+import GroupAdminPlugin from 'fraq-plugin-group-admin';
 
 const ctx = Context.fromUrl('http://127.0.0.1:30001/', {
   logHandler: createColoredLogHandler({
@@ -25,10 +42,11 @@ const ctx = Context.fromUrl('http://127.0.0.1:30001/', {
   }),
 });
 
-ctx.install(SchedulerPlugin);
 ctx.install(GroupAdminPlugin, {
+  groupIds: [123456789],
   reviewerUserIds: [123456789],
   moderatorUserIds: [123456789],
+  joinReviewEnabled: true,
 });
 
 await ctx.start();
@@ -50,6 +68,10 @@ activation:
 ```
 
 启用以上配置后，应发送 `@机器人 /help`、回复审核通知后发送 `@机器人 /y`，或回复目标消息后发送 `@机器人 /撤回`。下方命令表仍以默认的 `direct` 触发方式书写。
+
+也可以按稳定 tag 单独覆盖功能，例如 `group-admin:recall`、`group-admin:join-review`、`group-admin:kick`。CLI 的 `match.command` 只匹配命令主名称，不匹配 alias 和 rawPattern；涉及回复撤回、`y` / `n` 等 rawPattern 时，请使用 `match.plugin` 或 `match.tag`。
+
+完整的 CLI 源码行为、原实现风险与剩余部署边界见 [`docs/fraq-cli-compatibility.md`](docs/fraq-cli-compatibility.md)。
 
 ## 功能
 
@@ -106,11 +128,14 @@ activation:
 
 ```ts
 interface GroupAdminPluginOptions {
+  groupIds?: number[];
+  dataPath?: string;
   minimumAllowedLevel?: number;
   rejectionReason?: string;
   manualRejectionReason?: string;
   reviewerUserIds?: number[];
   moderatorUserIds?: number[];
+  joinReviewEnabled?: boolean;
   pendingJoinRequestNotificationEnabled?: boolean;
   pendingJoinRequestNotificationCron?: string;
   groupFileClassificationEnabled?: boolean;
@@ -124,6 +149,7 @@ interface GroupAdminPluginOptions {
   groupMemberCardGroupPatterns?: Record<string, string>;
   groupMemberCardViolationAction?: 'notify' | 'reset';
   groupMemberCardCheckCron?: string;
+  inactiveCleanupEnabled?: boolean;
   inactiveCleanupCron?: string;
   inactiveCleanupFreeSlotsThreshold?: number;
   inactiveCleanupKickLimit?: number;
@@ -136,6 +162,7 @@ interface GroupAdminPluginOptions {
   forbiddenWordMuteDurationSeconds?: number;
   blacklistUserIds?: number[];
   blacklistRejectionReason?: string;
+  blacklistCleanupEnabled?: boolean;
   blacklistCleanupCron?: string;
   whitelistUserIds?: number[];
 }
@@ -143,14 +170,17 @@ interface GroupAdminPluginOptions {
 
 | 选项 | 默认值 | 说明 |
 | --- | --- | --- |
+| `groupIds` | `[]` | 本插件实例可管理的群号；必须显式配置，所有事件、命令和定时任务共用此作用域 |
+| `dataPath` | `./data/data.json` | 数据文件路径，相对于 Fraq CLI 生成应用的工作目录 |
 | `minimumAllowedLevel` | `5` | 入群自动拒绝的最低 QQ 等级阈值，低于该值会拒绝 |
 | `rejectionReason` | `QQ 等级低于 ${minimumAllowedLevel}，暂不允许入群` | 自动拒绝低等级申请时使用的理由 |
 | `manualRejectionReason` | `管理员拒绝入群` | 审核员回复 `n` 时使用的拒绝理由 |
 | `reviewerUserIds` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
 | `moderatorUserIds` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
-| `pendingJoinRequestNotificationEnabled` | `true` | 是否定时检查并提醒待审核入群申请 |
+| `joinReviewEnabled` | `false` | 是否启用入群请求自动处理、审核命令和审核回复 |
+| `pendingJoinRequestNotificationEnabled` | `false` | 是否定时检查并提醒待审核入群申请；需同时启用 `joinReviewEnabled` |
 | `pendingJoinRequestNotificationCron` | `*/10 * * * *` | 待审核入群提醒 cron 表达式 |
-| `groupFileClassificationEnabled` | `true` | 是否启用每日群文件分类 |
+| `groupFileClassificationEnabled` | `false` | 是否启用每日群文件分类 |
 | `groupFileClassificationMode` | `extension` | 群文件分类模式：`extension` 按后缀名建文件夹，`category` 使用分类规则映射到文件夹 |
 | `groupFileClassificationCron` | `0 2 * * *` | 群文件分类 cron 表达式 |
 | `groupFileClassificationCategories` | 内置分类 | 群文件分类规则，键是目标文件夹名，值是后缀名列表 |
@@ -161,6 +191,7 @@ interface GroupAdminPluginOptions {
 | `groupMemberCardGroupPatterns` | `{}` | 分群群名片正则规则，键是群号字符串，值是正则 |
 | `groupMemberCardViolationAction` | `notify` | 名片违规处理：`notify` 只提示，`reset` 尝试恢复上一次合规名片 |
 | `groupMemberCardCheckCron` | `0 1 * * *` | 群名片每日检查 cron 表达式 |
+| `inactiveCleanupEnabled` | `false` | 是否启用容量不足时的自动清理；这是破坏性操作，必须显式开启 |
 | `inactiveCleanupCron` | `0 4 * * *` | 容量清理 cron 表达式 |
 | `inactiveCleanupFreeSlotsThreshold` | `9` | 群剩余名额小于等于该值时触发清理 |
 | `inactiveCleanupKickLimit` | `100` | 单群单次最多清理人数 |
@@ -173,6 +204,7 @@ interface GroupAdminPluginOptions {
 | `forbiddenWordMuteDurationSeconds` | `spamMuteDurationSeconds` | 触发违禁词后的禁言时长，单位秒 |
 | `blacklistUserIds` | `[]` | 启动时注入的黑名单用户 |
 | `blacklistRejectionReason` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
+| `blacklistCleanupEnabled` | `false` | 是否启用每日黑名单成员扫描 |
 | `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
 | `whitelistUserIds` | `[]` | 启动时注入的白名单用户 |
 
@@ -191,7 +223,7 @@ interface GroupAdminPluginOptions {
 
 ## 持久化
 
-插件会读写 `./data/data.json`，保存这些运行时数据：
+插件默认读写 `./data/data.json`，也可通过 `dataPath` 修改，保存这些运行时数据：
 
 - `blacklistUserIds`
 - `whitelistUserIds`
@@ -202,11 +234,11 @@ interface GroupAdminPluginOptions {
 - `silentSwitches`
 - `memberCardSnapshots`
 
-启动时会把配置中的黑白名单和文件中的持久化名单合并，并在命令修改名单或开关后立即写回文件。
+启动时会把配置中的黑白名单和文件中的持久化名单合并，并在命令修改名单或开关后立即写回文件。保存操作使用进程内共享存储、串行队列和同目录临时文件原子替换，避免同一 CLI 进程中的多个 fork 实例互相覆盖数据。
 
 ## SchedulerPlugin
 
-`SchedulerPlugin` 会提供 `SchedulerService`，支持：
+`SchedulerPlugin` 是保留给代码方式调用的兼容导出；`GroupAdminPlugin` 不再依赖它。独立安装后会提供 `SchedulerService`，支持：
 
 - `after(delayMs, callback)`
 - `every(intervalMs, callback)`

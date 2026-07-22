@@ -1,5 +1,7 @@
 import type { Context, milky } from '@fraqjs/fraq';
 
+import type { GroupAdminApi } from './api';
+
 export type GroupFileClassificationCategories = Record<string, readonly string[]>;
 export type GroupFileClassificationMode = 'extension' | 'category';
 
@@ -14,7 +16,7 @@ export const defaultGroupFileClassificationCategories: GroupFileClassificationCa
   代码: ['js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'py', 'java', 'go', 'rs', 'cpp', 'c', 'h', 'cs'],
 };
 
-type GroupFileClassificationContext = Pick<Context, 'client' | 'logger'>;
+type GroupFileClassificationContext = Pick<Context, 'logger'> & { api: GroupAdminApi };
 type MoveGroupFileInput = Parameters<Context['client']['move_group_file']>[0];
 
 function normalizeExtension(extension: string): string {
@@ -74,7 +76,7 @@ async function moveGroupFileWithFallbacks(ctx: GroupFileClassificationContext, i
     for (const parentFolderId of parentFolderIds) {
       for (const targetFolderId of targetFolderIds) {
         try {
-          await ctx.client.move_group_file({
+          await ctx.api.move_group_file({
             group_id: input.group_id,
             file_id: fileId,
             parent_folder_id: parentFolderId,
@@ -102,7 +104,7 @@ async function ensureFolder(
     return existingFolder.folder_id;
   }
 
-  const { folder_id } = await ctx.client.create_group_folder({
+  const { folder_id } = await ctx.api.create_group_folder({
     group_id: groupId,
     folder_name: folderName,
   });
@@ -138,7 +140,7 @@ export async function classifyRootGroupFiles(options: {
   const rootFolderId = '/';
   const extensionFolderMap = buildExtensionFolderMap(categories);
   const fallbackFolder = fallbackFolderName.trim();
-  const { files, folders } = await ctx.client.get_group_files({
+  const { files, folders } = await ctx.api.get_group_files({
     group_id: groupId,
     parent_folder_id: rootFolderId,
   });

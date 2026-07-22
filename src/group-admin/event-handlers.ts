@@ -1,12 +1,15 @@
 import { type Context, msg, seg } from '@fraqjs/fraq';
 
+import type { GroupAdminApi } from './api';
 import type { GroupAdminCommandKey } from './command-definitions';
-import type { PendingJoinRequest } from './join-review';
+import { canBotModerateTarget, getMessagePlainText } from './data-processing';
 import { type GroupMemberCardManagementOptions, observeGroupMemberCard } from './member-card-management';
-import { canBotModerateTarget, getMessagePlainText } from './message-utils';
+import type { PendingJoinRequest } from './models';
 
 export function registerEventHandlers(options: {
   ctx: Context;
+  api: GroupAdminApi;
+  joinReviewEnabled: boolean;
   minimumAllowedLevel: number;
   rejectionReason: string;
   blacklistRejectionReason: string;
@@ -34,6 +37,8 @@ export function registerEventHandlers(options: {
 }): void {
   const {
     ctx,
+    api,
+    joinReviewEnabled,
     minimumAllowedLevel,
     rejectionReason,
     blacklistRejectionReason,
@@ -80,7 +85,7 @@ export function registerEventHandlers(options: {
 
       if (groupMemberCardManagement.enabled) {
         await observeGroupMemberCard({
-          ctx,
+          ctx: { logger: ctx.logger, api },
           groupId: data.peer_id,
           botUserId: self_id,
           member: data.group_member,
@@ -99,7 +104,7 @@ export function registerEventHandlers(options: {
       if (forbiddenWords.size > 0 && isCommandFeatureEnabled(data.peer_id, 'forbiddenWord')) {
         const matchedForbiddenWord = [...forbiddenWords].find((word) => messageText.includes(word));
         if (matchedForbiddenWord) {
-          const { member: botMember } = await ctx.client.get_group_member_info({
+          const { member: botMember } = await api.get_group_member_info({
             group_id: data.peer_id,
             user_id: self_id,
             no_cache: true,
@@ -109,7 +114,7 @@ export function registerEventHandlers(options: {
             return;
           }
 
-          await ctx.client.set_group_member_mute({
+          await api.set_group_member_mute({
             group_id: data.peer_id,
             user_id: data.sender_id,
             duration: forbiddenWordMuteDurationSeconds,
@@ -156,7 +161,7 @@ export function registerEventHandlers(options: {
 
       spamRecords.delete(key);
       if (spamAction === 'kick') {
-        await ctx.client.kick_group_member({
+        await api.kick_group_member({
           group_id: data.peer_id,
           user_id: data.sender_id,
           reject_add_request: false,
@@ -165,7 +170,7 @@ export function registerEventHandlers(options: {
         return;
       }
 
-      await ctx.client.set_group_member_mute({
+      await api.set_group_member_mute({
         group_id: data.peer_id,
         user_id: data.sender_id,
         duration: spamMuteDurationSeconds,
@@ -222,8 +227,12 @@ export function registerEventHandlers(options: {
         return;
       }
 
+      if (!joinReviewEnabled) {
+        return;
+      }
+
       if (whitelistedUserIds.has(initiator_id)) {
-        await ctx.client.accept_group_request({
+        await api.accept_group_request({
           group_id,
           notification_seq,
           notification_type: 'join_request',
@@ -235,7 +244,7 @@ export function registerEventHandlers(options: {
       }
 
       if (blacklistedUserIds.has(initiator_id)) {
-        await ctx.client.reject_group_request({
+        await api.reject_group_request({
           group_id,
           notification_seq,
           notification_type: 'join_request',
@@ -247,7 +256,7 @@ export function registerEventHandlers(options: {
         return;
       }
 
-      const profile = await ctx.client.get_user_profile({
+      const profile = await api.get_user_profile({
         user_id: initiator_id,
       });
 
@@ -281,7 +290,7 @@ QQ 等级：${profile.level}
         return;
       }
 
-      await ctx.client.reject_group_request({
+      await api.reject_group_request({
         group_id,
         notification_seq,
         notification_type: 'join_request',

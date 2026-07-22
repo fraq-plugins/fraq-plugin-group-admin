@@ -1,19 +1,17 @@
-import { type Context, type milky, msg, param, type Session } from '@fraqjs/fraq';
+import { type Context, type milky, msg, type Session } from '@fraqjs/fraq';
 
 import type { SchedulerService } from '../scheduler';
-import { registerReplyLiteralRawRoutes } from './activation-routes';
+import type { GroupAdminApi, GroupMessage, SentGroupMessage } from './api';
 import { type GroupAdminCommandKey, getGroupAdminCommandLabel } from './command-definitions';
-import { getMessagePlainText, parseModerationTarget } from './message-utils';
+import { getMessagePlainText, parseModerationTarget } from './data-processing';
+import type { PendingJoinRequest } from './models';
 
-type GroupAdminContext = Context & { scheduler: SchedulerService };
-type GroupMessage = Parameters<Context['client']['send_group_message']>[0]['message'];
-type SentGroupMessage = Awaited<ReturnType<Context['client']['send_group_message']>>;
+type ReplySegment = Extract<milky.IncomingSegment, { type: 'reply' }>;
 
-export interface PendingJoinRequest {
-  groupId: number;
-  initiatorId: number;
-  notificationSeq: number;
-  isFiltered: boolean;
+export interface JoinReviewCommands {
+  list: (session: Session) => Promise<void>;
+  accept: (session: Session, target: milky.IncomingSegment[]) => Promise<void>;
+  decide: (session: Session, reply: ReplySegment, decision: 'y' | 'n') => Promise<void>;
 }
 
 function isPendingJoinRequestNotification(
@@ -41,8 +39,10 @@ function formatPendingJoinRequestList(requests: PendingJoinRequest[]): string {
   return requests.map((request) => String(request.initiatorId)).join('\n');
 }
 
-export function registerJoinReview(options: {
-  ctx: GroupAdminContext;
+export function createJoinReview(options: {
+  ctx: Context;
+  scheduler: SchedulerService;
+  api: GroupAdminApi;
   manualRejectionReason: string;
   reviewerUserIds: ReadonlySet<number>;
   pendingJoinRequests: Map<number, PendingJoinRequest>;
@@ -54,9 +54,11 @@ export function registerJoinReview(options: {
   isCommandFeatureEnabled: (groupId: number, commandKey: GroupAdminCommandKey) => boolean;
   replyIfNotSilent: (session: Session, content: Parameters<Session['reply']>[0]) => Promise<void>;
   sendGroupMessageIfNotSilent: (groupId: number, message: GroupMessage) => Promise<SentGroupMessage | undefined>;
-}): void {
+}): JoinReviewCommands {
   const {
     ctx,
+    scheduler,
+    api,
     manualRejectionReason,
     reviewerUserIds,
     pendingJoinRequests,
@@ -82,7 +84,7 @@ export function registerJoinReview(options: {
     for (const isFiltered of [false, true]) {
       let cursor: number | undefined;
       for (let page = 0; page < 5; page += 1) {
-        const { notifications, next_notification_seq } = await ctx.client.get_group_notifications({
+        const { notifications, next_notification_seq } = await api.get_group_notifications({
           start_notification_seq: cursor,
           is_filtered: isFiltered,
           limit: 50,
@@ -220,7 +222,7 @@ ${formatPendingJoinRequestList(requests)}
       return;
     }
 
-    await ctx.client.accept_group_request({
+    await api.accept_group_request({
       group_id: request.groupId,
       notification_seq: request.notificationSeq,
       notification_type: 'join_request',
@@ -248,7 +250,7 @@ ${formatPendingJoinRequestList(requests)}
   };
 
   if (pendingJoinRequestNotificationEnabled) {
-    ctx.scheduler.expression(pendingJoinRequestNotificationCron, async () => {
+    scheduler.expression(pendingJoinRequestNotificationCron, async () => {
       try {
         await listDataReady;
 
@@ -264,7 +266,7 @@ ${formatPendingJoinRequestList(requests)}
           }
         }
 
-        const { groups } = await ctx.client.get_group_list();
+        const { groups } = await api.get_group_list();
         const groupIds = new Set(groups.map((group) => group.group_id));
         const requestsByGroup = new Map<number, PendingJoinRequest[]>();
         for (const request of requests) {
@@ -297,22 +299,7 @@ ${formatPendingJoinRequestList(requests)}
     });
   }
 
-  ctx.router
-    .command('待审核入群')
-    .alias('入群审核列表', 'join-list')
-    .execute(async (session) => {
-      await executePendingJoinRequestListCommand(session);
-    });
-
-  ctx.router
-    .command('同意入群')
-    .alias('approve-join')
-    .arg('target', param.catchAll())
-    .execute(async (session, { target }) => {
-      await executeAcceptPendingJoinRequestCommand(session, target);
-    });
-
-  registerReplyLiteralRawRoutes(ctx.router, ['y', 'n'], async (session, reply, decision) => {
+  const executeJoinReviewDecision = async (session: Session, reply: ReplySegment, decision: 'y' | 'n') => {
     await listDataReady;
 
     if (session.raw.message_scene !== 'group') {
@@ -338,7 +325,7 @@ ${formatPendingJoinRequestList(requests)}
     }
 
     if (decision === 'y') {
-      await ctx.client.accept_group_request({
+      await api.accept_group_request({
         group_id: request.groupId,
         notification_seq: request.notificationSeq,
         notification_type: 'join_request',
@@ -349,7 +336,7 @@ ${formatPendingJoinRequestList(requests)}
       return;
     }
 
-    await ctx.client.reject_group_request({
+    await api.reject_group_request({
       group_id: request.groupId,
       notification_seq: request.notificationSeq,
       notification_type: 'join_request',
@@ -358,5 +345,11 @@ ${formatPendingJoinRequestList(requests)}
     });
     clearPendingJoinRequestCache(request);
     await replyIfNotSilent(session, msg`已拒绝 ${request.initiatorId} 的入群申请`);
-  });
+  };
+
+  return {
+    list: executePendingJoinRequestListCommand,
+    accept: executeAcceptPendingJoinRequestCommand,
+    decide: executeJoinReviewDecision,
+  };
 }

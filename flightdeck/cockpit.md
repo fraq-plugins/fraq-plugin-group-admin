@@ -4,11 +4,11 @@ Focus:
 Maintain and release the reusable `fraq-plugin-group-admin` moderation package for current Fraq versions.
 
 ## In flight
-- group-admin - moderation features and reusable package structure are implemented; package version `0.9.2` supports Fraq 0.14 CLI activation for ordinary and reply-aware commands.
+- group-admin - package version `0.10.0` is refactored for Fraq CLI 0.7/Fraq 0.14: self-contained default export, explicit group scope, runtime validation, stable activation tags, modular commands/API/data/config, and atomic persistence.
 
 ## Next
-- Publish `fraq-plugin-group-admin@0.9.2` when npm authentication is available.
-- Choose the next group-admin moderation feature or group-specific configuration.
+- Publish `fraq-plugin-group-admin@0.10.0` when npm authentication is available.
+- Configure deployment `groupIds` and opt-in automatic tasks before upgrading a running bot.
 
 ## Open questions
 - Should the minimum QQ level or rejection reason vary by group?

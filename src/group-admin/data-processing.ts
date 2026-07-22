@@ -1,11 +1,34 @@
 import type { milky } from '@fraqjs/fraq';
 
+export function addIntegerArrayToSet(value: unknown, target: Set<number>): void {
+  if (!Array.isArray(value)) return;
+  for (const item of value) {
+    if (Number.isSafeInteger(item) && item > 0) target.add(item);
+  }
+}
+
+export function addStringArrayToSet(value: unknown, target: Set<string>): void {
+  if (!Array.isArray(value)) return;
+  for (const item of value) {
+    if (typeof item === 'string' && item.trim()) target.add(item.trim());
+  }
+}
+
+export function addBooleanRecordToMap(value: unknown, target: Map<number, boolean>): void {
+  if (!value || typeof value !== 'object') return;
+  for (const [key, item] of Object.entries(value)) {
+    const groupId = Number(key);
+    if (Number.isSafeInteger(groupId) && groupId > 0 && typeof item === 'boolean') target.set(groupId, item);
+  }
+}
+
+export function booleanMapToRecord(value: ReadonlyMap<number, boolean>): Record<string, boolean> {
+  return Object.fromEntries([...value.entries()].sort(([left], [right]) => left - right));
+}
+
 export function parseModerationTarget(segments: milky.IncomingSegment[]): number | undefined {
   const mention = segments.find((segment) => segment.type === 'mention');
-  if (mention) {
-    return mention.data.user_id;
-  }
-
+  if (mention) return mention.data.user_id;
   const match = segments
     .filter((segment) => segment.type === 'text')
     .map((segment) => segment.data.text)
@@ -27,14 +50,8 @@ export function canBotModerateTarget(
   botRole: 'owner' | 'admin' | 'member',
   targetRole: 'owner' | 'admin' | 'member',
 ): boolean {
-  if (botRole === 'owner') {
-    return targetRole !== 'owner';
-  }
-
-  if (botRole === 'admin') {
-    return targetRole === 'member';
-  }
-
+  if (botRole === 'owner') return targetRole !== 'owner';
+  if (botRole === 'admin') return targetRole === 'member';
   return false;
 }
 
@@ -54,10 +71,7 @@ export function getMessagePlainText(segments: milky.IncomingSegment[]): string {
 
 export function parseRecallTarget(segments: milky.IncomingSegment[]): number | undefined {
   const mention = segments.find((segment) => segment.type === 'mention');
-  if (mention) {
-    return mention.data.user_id;
-  }
-
+  if (mention) return mention.data.user_id;
   const numbers = parseTextNumbers(segments);
   return numbers.length > 1 ? numbers[0] : undefined;
 }
@@ -80,10 +94,7 @@ export function parseReplySegment(
 export function uniqueMessages(messages: milky.IncomingMessage[]): milky.IncomingMessage[] {
   const seenMessageSeqs = new Set<number>();
   return messages.filter((message) => {
-    if (seenMessageSeqs.has(message.message_seq)) {
-      return false;
-    }
-
+    if (seenMessageSeqs.has(message.message_seq)) return false;
     seenMessageSeqs.add(message.message_seq);
     return true;
   });
@@ -102,18 +113,10 @@ export function selectRecallMessages(
 ): milky.IncomingMessage[] {
   return sortMessagesNewestFirst(
     uniqueMessages(messages).filter((message) => {
-      if (message.message_scene !== 'group') {
+      if (message.message_scene !== 'group') return false;
+      if (includeAnchor ? message.message_seq > anchorMessageSeq : message.message_seq >= anchorMessageSeq)
         return false;
-      }
-
-      if (includeAnchor ? message.message_seq > anchorMessageSeq : message.message_seq >= anchorMessageSeq) {
-        return false;
-      }
-
-      if (protectedUserIds?.has(message.sender_id)) {
-        return false;
-      }
-
+      if (protectedUserIds?.has(message.sender_id)) return false;
       return targetUserId ? message.sender_id === targetUserId : true;
     }),
   );
