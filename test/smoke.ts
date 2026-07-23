@@ -113,13 +113,19 @@ function testHelpMessages(): void {
     isCommandFeatureEnabled: (_groupId, commandKey) => commandKey !== 'kick',
   });
 
-  assert.equal(messages[0]?.content, '约定\n1.user_id: qq号\n2.at_user_id: 艾特qq\n3.s: 秒');
-  assert.equal(messages[1]?.content, '当前状态\n群管：开启\n命令：关闭\n静默：开启');
-  assert.equal(messages.find(({ title }) => title === '群管开关')?.content, '群开 / 群关：开启 / 关闭群管');
-  assert.match(messages.find(({ title }) => title.includes('踢人'))?.title ?? '', /^\[x\]/u);
-  assert.equal(messages.filter(({ content }) => content.startsWith('群开 / 群关')).length, 1);
   assert.equal(
-    messages.slice(2).every(({ content }) => !content.includes('\n')),
+    messages[0]?.content,
+    '约定\n1.user_id: qq号\n2.at_user_id: 艾特qq\n3.s: 秒\n4.number：数量\n5.别名参数同命令',
+  );
+  assert.equal(messages[1]?.content, '当前状态\n群管：开启\n命令：关闭\n静默：开启');
+  assert.equal(messages.find(({ title }) => title === '群开')?.content, '命令：群开\n说明：开启群管\n别名：群管开');
+  assert.equal(
+    messages.find(({ title }) => title.includes('禁言'))?.content,
+    '命令：禁言 [user_id | at_user_id] [s]\n说明：禁言群成员；不填写 s 时使用默认时长\n别名：mute',
+  );
+  assert.match(messages.find(({ title }) => title.includes('踢人'))?.title ?? '', /^\[x\]/u);
+  assert.equal(
+    messages.slice(2).every(({ content }) => /^命令：[^\n]+\n说明：[^\n]+\n别名：[^\n]+$/u.test(content)),
     true,
   );
 }

@@ -2,11 +2,11 @@
 
 ## State
 
-Released `fraq-plugin-group-admin@1.0.0` for the actual Fraq CLI 0.7 loading model. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one logical command per node and shared parameter conventions.
+Released `fraq-plugin-group-admin@1.0.0` for the actual Fraq CLI 0.7 loading model, with an unreleased help-format refactor afterward. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template.
 
 ## Next
 
-- Start the `D:\bot\fraq-plugins\my-fraq-app` deployment when requested and verify the new help output against Milky.
+- Bump and publish the next package version when requested, then update `D:\bot\fraq-plugins\my-fraq-app` and verify the new help output against Milky.
 - Configure deployment `groupIds` and explicitly opt into the required automatic tasks.
 
 ## Read now
@@ -17,6 +17,7 @@ Released `fraq-plugin-group-admin@1.0.0` for the actual Fraq CLI 0.7 loading mod
 - flightdeck/knowledge/fraq/mock-version-compat.md
 - flightdeck/knowledge/fraq/plugin-reuse-first.md
 - flightdeck/knowledge/fraq/cli-plugin-compatibility.md
+- flightdeck/knowledge/fraq/group-admin-help-format.md
 - flightdeck/knowledge/milky/group-join-review.md
 - flightdeck/knowledge/milky/group-message-moderation.md
 
@@ -153,6 +154,7 @@ Blocked/known:
 - Refactored help output into one merged-forward node per logical command, added the `user_id` / `at_user_id` / `s` convention node, changed the group switch wording to `群开 / 群关：开启 / 关闭群管`, and moved feature-enabled markers onto their corresponding command nodes. Content-level smoke coverage verifies the structure and wording; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
 - Corrected the help convention node to preserve the user-provided template exactly: `1.user_id: qq号`, `2.at_user_id: 艾特qq`, and `3.s: 秒`; the smoke test now asserts the exact text.
 - Confirmed npm release `1.0.0`, updated the Fraq test deployment lock, generated app dependency, package lock, and installed package from the npm registry, and verified the installed bundle contains the exact help convention and group-switch wording. Fraq was left stopped.
+- Refactored every help command node to the exact `命令：` / `说明：` / `别名：` template, added the `number` and alias-argument conventions, and split paired controls and review decisions into one node per command. Smoke coverage verifies the exact convention, mute example, disabled marker, and three-line structure; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
 
 ## Open questions
 
