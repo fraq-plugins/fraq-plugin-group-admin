@@ -113,7 +113,7 @@ function testHelpMessages(): void {
     isCommandFeatureEnabled: (_groupId, commandKey) => commandKey !== 'kick',
   });
 
-  assert.equal(messages[0]?.content, '约定\n1. user_id：QQ号\n2. at_user_id：艾特QQ\n3. s：秒');
+  assert.equal(messages[0]?.content, '约定\n1.user_id: qq号\n2.at_user_id: 艾特qq\n3.s: 秒');
   assert.equal(messages[1]?.content, '当前状态\n群管：开启\n命令：关闭\n静默：开启');
   assert.equal(messages.find(({ title }) => title === '群管开关')?.content, '群开 / 群关：开启 / 关闭群管');
   assert.match(messages.find(({ title }) => title.includes('踢人'))?.title ?? '', /^\[x\]/u);

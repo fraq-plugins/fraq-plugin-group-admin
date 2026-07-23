@@ -151,6 +151,7 @@ Blocked/known:
 - Refactored `0.10.0` around the Fraq CLI default-export loader: removed the SchedulerService injection requirement, centralized commands/API/data/config/models/scope, added fail-closed `groupIds`, opt-in automatic tasks, stable activation tags, runtime config validation, and shared serialized atomic persistence.
 - Added CLI-equivalent startup, activation/tag, group scope, scheduled-scope, invalid-config, and concurrent-persistence smoke coverage. `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` pass.
 - Refactored help output into one merged-forward node per logical command, added the `user_id` / `at_user_id` / `s` convention node, changed the group switch wording to `群开 / 群关：开启 / 关闭群管`, and moved feature-enabled markers onto their corresponding command nodes. Content-level smoke coverage verifies the structure and wording; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
+- Corrected the help convention node to preserve the user-provided template exactly: `1.user_id: qq号`, `2.at_user_id: 艾特qq`, and `3.s: 秒`; the smoke test now asserts the exact text.
 
 ## Open questions
 

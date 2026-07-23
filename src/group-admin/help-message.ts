@@ -129,9 +129,9 @@ export function buildHelpMessages(options: {
     {
       title: '约定',
       content: `约定
-1. user_id：QQ号
-2. at_user_id：艾特QQ
-3. s：秒`,
+1.user_id: qq号
+2.at_user_id: 艾特qq
+3.s: 秒`,
     },
     {
       title: '当前状态',
