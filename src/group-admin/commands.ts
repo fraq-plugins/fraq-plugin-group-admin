@@ -24,7 +24,7 @@ import {
   uniqueMessages,
 } from './data-processing';
 import { classifyRootGroupFiles } from './group-file-classification';
-import { buildHelpMessageSections } from './help-message';
+import { buildHelpMessages } from './help-message';
 import type { JoinReviewCommands } from './join-review';
 import { checkGroupMemberCards, type GroupMemberCardManagementOptions } from './member-card-management';
 import type { GroupAdminRuntime } from './models';
@@ -437,7 +437,7 @@ export function registerGroupAdminCommands(
     .execute(async (session) => {
       await listDataReady;
 
-      const helpSections = buildHelpMessageSections({
+      const helpMessages = buildHelpMessages({
         groupId: session.raw.message_scene === 'group' ? session.raw.peer_id : undefined,
         isGroupEnabled,
         areCommandsEnabled,
@@ -447,15 +447,15 @@ export function registerGroupAdminCommands(
 
       await session.reply([
         seg.forward(
-          helpSections.map(({ title, content }) => ({
+          helpMessages.map(({ title, content }) => ({
             user_id: session.selfId,
             sender_name: title,
             segments: msg`${content}`,
           })),
           {
             title: '群管帮助',
-            preview: helpSections.slice(0, 4).map(({ title }) => title),
-            summary: `共 ${helpSections.length} 段群管帮助`,
+            preview: helpMessages.slice(0, 4).map(({ title }) => title),
+            summary: `共 ${helpMessages.length} 条群管帮助`,
             prompt: '群管帮助',
           },
         ),

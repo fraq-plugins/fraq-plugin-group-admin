@@ -5,6 +5,7 @@ import { registerLiteralRawRoutes, registerReplyLiteralRawRoutes } from '../src/
 import type { GroupAdminApi } from '../src/group-admin/api';
 import { normalizeGroupAdminConfig } from '../src/group-admin/config';
 import { createGroupAdminDataStore } from '../src/group-admin/data-store';
+import { buildHelpMessages } from '../src/group-admin/help-message';
 import type { GroupAdminDataStore, GroupAdminRuntime } from '../src/group-admin/models';
 import { registerScheduledTasks } from '../src/group-admin/scheduled-tasks';
 import { createGroupScope } from '../src/group-admin/scope';
@@ -101,6 +102,26 @@ function testRuntimeConfigValidation(): void {
   assert.throws(() => normalizeGroupAdminConfig({ inactiveCleanupCron: 'invalid' }), /inactiveCleanupCron/u);
   assert.throws(() => normalizeGroupAdminConfig({ groupMemberCardPattern: '[' }), /groupMemberCardPattern/u);
   assert.deepEqual(normalizeGroupAdminConfig(undefined).groupIds, []);
+}
+
+function testHelpMessages(): void {
+  const messages = buildHelpMessages({
+    groupId: 12_345,
+    isGroupEnabled: () => true,
+    areCommandsEnabled: () => false,
+    isSilentEnabled: () => true,
+    isCommandFeatureEnabled: (_groupId, commandKey) => commandKey !== 'kick',
+  });
+
+  assert.equal(messages[0]?.content, '约定\n1. user_id：QQ号\n2. at_user_id：艾特QQ\n3. s：秒');
+  assert.equal(messages[1]?.content, '当前状态\n群管：开启\n命令：关闭\n静默：开启');
+  assert.equal(messages.find(({ title }) => title === '群管开关')?.content, '群开 / 群关：开启 / 关闭群管');
+  assert.match(messages.find(({ title }) => title.includes('踢人'))?.title ?? '', /^\[x\]/u);
+  assert.equal(messages.filter(({ content }) => content.startsWith('群开 / 群关')).length, 1);
+  assert.equal(
+    messages.slice(2).every(({ content }) => !content.includes('\n')),
+    true,
+  );
 }
 
 function testScope(): void {
@@ -205,6 +226,7 @@ await testCliDefaultExportStartup();
 testActivationRoutes();
 await testPluginTagsAndScope();
 testRuntimeConfigValidation();
+testHelpMessages();
 testScope();
 await testScheduledTaskScope();
 await testSerializedAtomicPersistence();

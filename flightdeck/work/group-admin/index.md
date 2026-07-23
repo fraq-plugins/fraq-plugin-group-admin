@@ -2,7 +2,7 @@
 
 ## State
 
-Refactored the package as `fraq-plugin-group-admin@0.10.0` for the actual Fraq CLI 0.7 loading model. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic.
+Refactored the package as `fraq-plugin-group-admin@0.10.0` for the actual Fraq CLI 0.7 loading model. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one logical command per node and shared parameter conventions.
 
 ## Next
 
@@ -150,6 +150,7 @@ Blocked/known:
 - Tagged the pre-refactor state as annotated tag `v0.9.2` at `a08af7c`.
 - Refactored `0.10.0` around the Fraq CLI default-export loader: removed the SchedulerService injection requirement, centralized commands/API/data/config/models/scope, added fail-closed `groupIds`, opt-in automatic tasks, stable activation tags, runtime config validation, and shared serialized atomic persistence.
 - Added CLI-equivalent startup, activation/tag, group scope, scheduled-scope, invalid-config, and concurrent-persistence smoke coverage. `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` pass.
+- Refactored help output into one merged-forward node per logical command, added the `user_id` / `at_user_id` / `s` convention node, changed the group switch wording to `群开 / 群关：开启 / 关闭群管`, and moved feature-enabled markers onto their corresponding command nodes. Content-level smoke coverage verifies the structure and wording; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
 
 ## Open questions
 

@@ -4,7 +4,7 @@ Focus:
 Maintain and release the reusable `fraq-plugin-group-admin` moderation package for current Fraq versions.
 
 ## In flight
-- group-admin - package version `0.10.0` is refactored for Fraq CLI 0.7/Fraq 0.14: self-contained default export, explicit group scope, runtime validation, stable activation tags, modular commands/API/data/config, and atomic persistence.
+- group-admin - package version `0.10.0` is refactored for Fraq CLI 0.7/Fraq 0.14; help now uses shared parameter conventions and one merged-forward node per logical command.
 
 ## Next
 - Publish `fraq-plugin-group-admin@0.10.0` when npm authentication is available.
