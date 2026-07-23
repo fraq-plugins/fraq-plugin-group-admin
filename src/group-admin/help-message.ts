@@ -205,7 +205,8 @@ export function buildHelpMessages(options: {
 2.at_user_id: 艾特qq
 3.s: 秒
 4.number：数量
-5.别名参数同命令`,
+5.别名参数同命令
+6. 带有 “|” 符号的参数代表可选其中之一`,
     },
     {
       title: '当前状态',
