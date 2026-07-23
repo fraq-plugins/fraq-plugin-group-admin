@@ -16,3 +16,5 @@ Checklist:
 - Command-like top-level raw patterns still need `param.literal()` so activation is consumed at the intended point.
 - CLI runs the generated app from its `app` directory. Document relative persistence paths and expose a configurable path.
 - Multiple plugin instances in one CLI process can share a persistence path. Share in-memory state by resolved path and serialize atomic saves; separate OS processes still require deployment-level single-writer discipline.
+- Fraq CLI 0.7 `install` only runs the package manager against the existing generated `app/package.json`; it does not regenerate that file from `versions.yml`. After changing a plugin lock version, `start` regenerates the app before installing, but an install-only workflow must synchronize `app/package.json` before running the package manager.
+- The CLI-generated `@fraqjs/color-log@0.2.0` still declares a Fraq `^0.3.3` peer. With Fraq 0.14, npm may raise `ERESOLVE` when a dependency actually changes; use the deployment's established peer-override policy until the CLI updates this generated dependency.

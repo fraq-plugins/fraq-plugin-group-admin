@@ -2,11 +2,11 @@
 
 ## State
 
-Refactored the package as `fraq-plugin-group-admin@0.10.0` for the actual Fraq CLI 0.7 loading model. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one logical command per node and shared parameter conventions.
+Released `fraq-plugin-group-admin@1.0.0` for the actual Fraq CLI 0.7 loading model. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one logical command per node and shared parameter conventions.
 
 ## Next
 
-- Publish `fraq-plugin-group-admin@0.10.0` when npm authentication is available.
+- Start the `D:\bot\fraq-plugins\my-fraq-app` deployment when requested and verify the new help output against Milky.
 - Configure deployment `groupIds` and explicitly opt into the required automatic tasks.
 
 ## Read now
@@ -152,6 +152,7 @@ Blocked/known:
 - Added CLI-equivalent startup, activation/tag, group scope, scheduled-scope, invalid-config, and concurrent-persistence smoke coverage. `pnpm format`, `pnpm lint`, `pnpm check`, `pnpm smoke`, `pnpm build`, and `npm pack --dry-run` pass.
 - Refactored help output into one merged-forward node per logical command, added the `user_id` / `at_user_id` / `s` convention node, changed the group switch wording to `群开 / 群关：开启 / 关闭群管`, and moved feature-enabled markers onto their corresponding command nodes. Content-level smoke coverage verifies the structure and wording; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
 - Corrected the help convention node to preserve the user-provided template exactly: `1.user_id: qq号`, `2.at_user_id: 艾特qq`, and `3.s: 秒`; the smoke test now asserts the exact text.
+- Confirmed npm release `1.0.0`, updated the Fraq test deployment lock, generated app dependency, package lock, and installed package from the npm registry, and verified the installed bundle contains the exact help convention and group-switch wording. Fraq was left stopped.
 
 ## Open questions
 
