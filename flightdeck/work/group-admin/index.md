@@ -2,11 +2,11 @@
 
 ## State
 
-Released `fraq-plugin-group-admin@1.0.0` for the actual Fraq CLI 0.7 loading model, with an unreleased help-format refactor afterward. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template.
+Released `fraq-plugin-group-admin@1.0.1` for the actual Fraq CLI 0.7 loading model and installed it in the running test deployment. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template.
 
 ## Next
 
-- Bump and publish the next package version when requested, then update `D:\bot\fraq-plugins\my-fraq-app` and verify the new help output against Milky.
+- Verify the `1.0.1` help output against Milky in `D:\bot\fraq-plugins\my-fraq-app`.
 - Configure deployment `groupIds` and explicitly opt into the required automatic tasks.
 
 ## Read now
@@ -155,6 +155,7 @@ Blocked/known:
 - Corrected the help convention node to preserve the user-provided template exactly: `1.user_id: qq号`, `2.at_user_id: 艾特qq`, and `3.s: 秒`; the smoke test now asserts the exact text.
 - Confirmed npm release `1.0.0`, updated the Fraq test deployment lock, generated app dependency, package lock, and installed package from the npm registry, and verified the installed bundle contains the exact help convention and group-switch wording. Fraq was left stopped.
 - Refactored every help command node to the exact `命令：` / `说明：` / `别名：` template, added the `number` and alias-argument conventions, and split paired controls and review decisions into one node per command. Smoke coverage verifies the exact convention, mute example, disabled marker, and three-line structure; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
+- Confirmed npm release `1.0.1`, stopped the old test app, updated the deployment lock and generated app dependency, installed `1.0.1`, and restarted one visible Fraq CLI/app chain. The installed bundle contains the new number convention and mute template.
 
 ## Open questions
 
