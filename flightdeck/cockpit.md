@@ -4,10 +4,10 @@ Focus:
 Maintain and release the reusable `fraq-plugin-group-admin` moderation package for current Fraq versions.
 
 ## In flight
-- group-admin - package version `1.0.1` is published, installed, and running in the test deployment with the command/description/alias help format.
+- group-admin - package version `1.0.2` is published; the running test deployment remains on `1.0.1`. README configuration rows now include explicit compact data types.
 
 ## Next
-- Verify the `1.0.1` help output against Milky in the running test deployment.
+- Update the test deployment from `1.0.1` to `1.0.2` when requested.
 - Configure deployment `groupIds` and opt-in automatic tasks before upgrading a running bot.
 
 ## Open questions

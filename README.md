@@ -168,45 +168,45 @@ interface GroupAdminPluginOptions {
 }
 ```
 
-| 选项 | 默认值 | 说明 |
-| --- | --- | --- |
-| `groupIds` | `[]` | 本插件实例可管理的群号；必须显式配置，所有事件、命令和定时任务共用此作用域 |
-| `dataPath` | `./data/data.json` | 数据文件路径，相对于 Fraq CLI 生成应用的工作目录 |
-| `minimumAllowedLevel` | `5` | 入群自动拒绝的最低 QQ 等级阈值，低于该值会拒绝 |
-| `rejectionReason` | `QQ 等级低于 ${minimumAllowedLevel}，暂不允许入群` | 自动拒绝低等级申请时使用的理由 |
-| `manualRejectionReason` | `管理员拒绝入群` | 审核员回复 `n` 时使用的拒绝理由 |
-| `reviewerUserIds` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
-| `moderatorUserIds` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
-| `joinReviewEnabled` | `false` | 是否启用入群请求自动处理、审核命令和审核回复 |
-| `pendingJoinRequestNotificationEnabled` | `false` | 是否定时检查并提醒待审核入群申请；需同时启用 `joinReviewEnabled` |
-| `pendingJoinRequestNotificationCron` | `*/10 * * * *` | 待审核入群提醒 cron 表达式 |
-| `groupFileClassificationEnabled` | `false` | 是否启用每日群文件分类 |
-| `groupFileClassificationMode` | `extension` | 群文件分类模式：`extension` 按后缀名建文件夹，`category` 使用分类规则映射到文件夹 |
-| `groupFileClassificationCron` | `0 2 * * *` | 群文件分类 cron 表达式 |
-| `groupFileClassificationCategories` | 内置分类 | 群文件分类规则，键是目标文件夹名，值是后缀名列表 |
-| `groupFileClassificationFallbackFolderName` | `其他` | 未匹配分类或无后缀文件移动到的文件夹；设为空字符串可跳过这些文件 |
-| `groupMemberCardManagementEnabled` | `false` | 是否启用群名片改动监听和每日检查 |
-| `groupMemberCardRuleScope` | `global` | 群名片规则作用域：`global` 使用统一规则，`group` 使用分群规则 |
-| `groupMemberCardPattern` | 无 | 统一群名片正则规则 |
-| `groupMemberCardGroupPatterns` | `{}` | 分群群名片正则规则，键是群号字符串，值是正则 |
-| `groupMemberCardViolationAction` | `notify` | 名片违规处理：`notify` 只提示，`reset` 尝试恢复上一次合规名片 |
-| `groupMemberCardCheckCron` | `0 1 * * *` | 群名片每日检查 cron 表达式 |
-| `inactiveCleanupEnabled` | `false` | 是否启用容量不足时的自动清理；这是破坏性操作，必须显式开启 |
-| `inactiveCleanupCron` | `0 4 * * *` | 容量清理 cron 表达式 |
-| `inactiveCleanupFreeSlotsThreshold` | `9` | 群剩余名额小于等于该值时触发清理 |
-| `inactiveCleanupKickLimit` | `100` | 单群单次最多清理人数 |
-| `spamDetectionWindowMs` | `10000` | 刷屏检测窗口，单位毫秒 |
-| `spamDetectionSegmentLimit` | `8` | 窗口内触发刷屏的消息段数量 |
-| `spamAction` | `mute` | 第三次刷屏后的处理方式，可选 `mute` 或 `kick` |
-| `spamMuteDurationSeconds` | `600` | 刷屏禁言时长，单位秒 |
-| `manualMuteDurationSeconds` | `spamMuteDurationSeconds` | 手动禁言未传秒数时使用的默认时长 |
-| `forbiddenWords` | `[]` | 启动时注入的违禁词列表 |
-| `forbiddenWordMuteDurationSeconds` | `spamMuteDurationSeconds` | 触发违禁词后的禁言时长，单位秒 |
-| `blacklistUserIds` | `[]` | 启动时注入的黑名单用户 |
-| `blacklistRejectionReason` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
-| `blacklistCleanupEnabled` | `false` | 是否启用每日黑名单成员扫描 |
-| `blacklistCleanupCron` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
-| `whitelistUserIds` | `[]` | 启动时注入的白名单用户 |
+| 选项 | 数据类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `groupIds` | `list[int]` | `[]` | 本插件实例可管理的群号；必须显式配置，所有事件、命令和定时任务共用此作用域 |
+| `dataPath` | `str` | `./data/data.json` | 数据文件路径，相对于 Fraq CLI 生成应用的工作目录 |
+| `minimumAllowedLevel` | `int` | `5` | 入群自动拒绝的最低 QQ 等级阈值，低于该值会拒绝 |
+| `rejectionReason` | `str` | `QQ 等级低于 ${minimumAllowedLevel}，暂不允许入群` | 自动拒绝低等级申请时使用的理由 |
+| `manualRejectionReason` | `str` | `管理员拒绝入群` | 审核员回复 `n` 时使用的拒绝理由 |
+| `reviewerUserIds` | `list[int]` | `[]` | 可处理入群审核通知的用户 ID；群主和管理员始终可处理 |
+| `moderatorUserIds` | `list[int]` | `reviewerUserIds` | 可使用群管命令的用户 ID；群主和管理员始终可使用 |
+| `joinReviewEnabled` | `bool` | `false` | 是否启用入群请求自动处理、审核命令和审核回复 |
+| `pendingJoinRequestNotificationEnabled` | `bool` | `false` | 是否定时检查并提醒待审核入群申请；需同时启用 `joinReviewEnabled` |
+| `pendingJoinRequestNotificationCron` | `str` | `*/10 * * * *` | 待审核入群提醒 cron 表达式 |
+| `groupFileClassificationEnabled` | `bool` | `false` | 是否启用每日群文件分类 |
+| `groupFileClassificationMode` | `str` | `extension` | 群文件分类模式：`extension` 按后缀名建文件夹，`category` 使用分类规则映射到文件夹 |
+| `groupFileClassificationCron` | `str` | `0 2 * * *` | 群文件分类 cron 表达式 |
+| `groupFileClassificationCategories` | `dict[str, list[str]]` | 内置分类 | 群文件分类规则，键是目标文件夹名，值是后缀名列表 |
+| `groupFileClassificationFallbackFolderName` | `str` | `其他` | 未匹配分类或无后缀文件移动到的文件夹；设为空字符串可跳过这些文件 |
+| `groupMemberCardManagementEnabled` | `bool` | `false` | 是否启用群名片改动监听和每日检查 |
+| `groupMemberCardRuleScope` | `str` | `global` | 群名片规则作用域：`global` 使用统一规则，`group` 使用分群规则 |
+| `groupMemberCardPattern` | `str` | 无 | 统一群名片正则规则 |
+| `groupMemberCardGroupPatterns` | `dict[str, str]` | `{}` | 分群群名片正则规则，键是群号字符串，值是正则 |
+| `groupMemberCardViolationAction` | `str` | `notify` | 名片违规处理：`notify` 只提示，`reset` 尝试恢复上一次合规名片 |
+| `groupMemberCardCheckCron` | `str` | `0 1 * * *` | 群名片每日检查 cron 表达式 |
+| `inactiveCleanupEnabled` | `bool` | `false` | 是否启用容量不足时的自动清理；这是破坏性操作，必须显式开启 |
+| `inactiveCleanupCron` | `str` | `0 4 * * *` | 容量清理 cron 表达式 |
+| `inactiveCleanupFreeSlotsThreshold` | `int` | `9` | 群剩余名额小于等于该值时触发清理 |
+| `inactiveCleanupKickLimit` | `int` | `100` | 单群单次最多清理人数 |
+| `spamDetectionWindowMs` | `int` | `10000` | 刷屏检测窗口，单位毫秒 |
+| `spamDetectionSegmentLimit` | `int` | `8` | 窗口内触发刷屏的消息段数量 |
+| `spamAction` | `str` | `mute` | 第三次刷屏后的处理方式，可选 `mute` 或 `kick` |
+| `spamMuteDurationSeconds` | `int` | `600` | 刷屏禁言时长，单位秒 |
+| `manualMuteDurationSeconds` | `int` | `spamMuteDurationSeconds` | 手动禁言未传秒数时使用的默认时长 |
+| `forbiddenWords` | `list[str]` | `[]` | 启动时注入的违禁词列表 |
+| `forbiddenWordMuteDurationSeconds` | `int` | `spamMuteDurationSeconds` | 触发违禁词后的禁言时长，单位秒 |
+| `blacklistUserIds` | `list[int]` | `[]` | 启动时注入的黑名单用户 |
+| `blacklistRejectionReason` | `str` | `已被加入黑名单` | 黑名单用户入群申请的拒绝理由 |
+| `blacklistCleanupEnabled` | `bool` | `false` | 是否启用每日黑名单成员扫描 |
+| `blacklistCleanupCron` | `str` | `0 3 * * *` | 黑名单每日扫描 cron 表达式 |
+| `whitelistUserIds` | `list[int]` | `[]` | 启动时注入的白名单用户 |
 
 默认群文件分类模式会按后缀名创建文件夹，例如 `pdf`、`zip`、`png`。设置 `groupFileClassificationMode: 'category'` 后会使用内置分类：图片、文档、表格、演示、压缩包、音频、视频、代码。分类任务只处理群文件根目录中的文件，不会移动已经位于子文件夹内的文件；按群开关关闭群管后，该群也会跳过每日群文件分类。
 

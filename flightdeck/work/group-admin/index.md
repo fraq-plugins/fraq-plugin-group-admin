@@ -2,11 +2,11 @@
 
 ## State
 
-Released `fraq-plugin-group-admin@1.0.1` for the actual Fraq CLI 0.7 loading model and installed it in the running test deployment. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template.
+Released `fraq-plugin-group-admin@1.0.2` for the actual Fraq CLI 0.7 loading model; the running test deployment remains on `1.0.1`. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template.
 
 ## Next
 
-- Verify the `1.0.1` help output against Milky in `D:\bot\fraq-plugins\my-fraq-app`.
+- Update `D:\bot\fraq-plugins\my-fraq-app` from `1.0.1` to published version `1.0.2` when requested.
 - Configure deployment `groupIds` and explicitly opt into the required automatic tasks.
 
 ## Read now
@@ -18,6 +18,7 @@ Released `fraq-plugin-group-admin@1.0.1` for the actual Fraq CLI 0.7 loading mod
 - flightdeck/knowledge/fraq/plugin-reuse-first.md
 - flightdeck/knowledge/fraq/cli-plugin-compatibility.md
 - flightdeck/knowledge/fraq/group-admin-help-format.md
+- flightdeck/knowledge/docs/readme-config-types.md
 - flightdeck/knowledge/milky/group-join-review.md
 - flightdeck/knowledge/milky/group-message-moderation.md
 
@@ -156,6 +157,7 @@ Blocked/known:
 - Confirmed npm release `1.0.0`, updated the Fraq test deployment lock, generated app dependency, package lock, and installed package from the npm registry, and verified the installed bundle contains the exact help convention and group-switch wording. Fraq was left stopped.
 - Refactored every help command node to the exact `命令：` / `说明：` / `别名：` template, added the `number` and alias-argument conventions, and split paired controls and review decisions into one node per command. Smoke coverage verifies the exact convention, mute example, disabled marker, and three-line structure; format, lint, typecheck, smoke, build, and npm pack dry-run pass.
 - Confirmed npm release `1.0.1`, stopped the old test app, updated the deployment lock and generated app dependency, installed `1.0.1`, and restarted one visible Fraq CLI/app chain. The installed bundle contains the new number convention and mute template.
+- Added a README configuration data-type column for all 37 `GroupAdminPluginOptions` properties using compact `int`, `str`, `bool`, `list[...]`, and `dict[...]` notation. Interface/table bidirectional comparison, formatting, lint, build, and npm pack dry-run pass.
 
 ## Open questions
 
