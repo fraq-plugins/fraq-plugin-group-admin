@@ -2,11 +2,11 @@
 
 ## State
 
-Released `fraq-plugin-group-admin@1.0.2` for the actual Fraq CLI 0.7 loading model; the running test deployment remains on `1.0.1`. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template. Fraq market currently ingests `1.0.2` but leaves it unlisted because the published npm manifest has no `fraq.category`.
+Released `fraq-plugin-group-admin@1.0.2` for the actual Fraq CLI 0.7 loading model; the running test deployment remains on `1.0.1`. The default export is self-contained, all command construction and Milky API access are centralized, plugin config is validated at runtime, group work is fail-closed behind `groupIds`, destructive schedules are opt-in, and persistence is shared/serialized/atomic. Help is emitted as merged-forward nodes with one command per node and a fixed command/description/alias template. Package `1.0.3` is prepared with Fraq market category `management` but is not published yet.
 
 ## Next
 
-- Add `fraq.category: "management"`, bump and publish the package, then confirm the generated Fraq registry no longer marks it unlisted.
+- Publish `1.0.3`, then confirm the generated Fraq registry lists it under `management` without `market.unlisted`.
 - Update `D:\bot\fraq-plugins\my-fraq-app` from `1.0.1` to published version `1.0.2` when requested.
 - Configure deployment `groupIds` and explicitly opt into the required automatic tasks.
 
@@ -127,6 +127,7 @@ Done:
 - Restored README to the prefixed command examples version after the rollback proved to be the wrong target, while keeping the cleaned configuration docs without `inactiveCleanupGroupIds` or `spamIgnoredUserIds`.
 
 Blocked/known:
+- `pnpm smoke` expects the five-line help convention while runtime help also includes `6. 带有 “|” 符号的参数代表可选其中之一`; resolve which text is authoritative before changing either side.
 - npm publish needs a one-time password or browser authentication for the logged-in npm account.
 - Publishing `0.9.2` still requires npm authentication; authentication was not retried during the activation compatibility update.
 - Added forbidden-word moderation for `0.6.0`: persisted `forbiddenWords`, configurable `forbiddenWordMuteDurationSeconds`, `/添加违禁词` and `/删除违禁词` commands with `word-add`/`word-del` aliases, and automatic mute when ordinary non-whitelisted members send matching text.
@@ -161,6 +162,7 @@ Blocked/known:
 - Confirmed npm release `1.0.1`, stopped the old test app, updated the deployment lock and generated app dependency, installed `1.0.1`, and restarted one visible Fraq CLI/app chain. The installed bundle contains the new number convention and mute template.
 - Added a README configuration data-type column for all 37 `GroupAdminPluginOptions` properties using compact `int`, `str`, `bool`, `list[...]`, and `dict[...]` notation. Interface/table bidirectional comparison, formatting, lint, build, and npm pack dry-run pass.
 - Checked the current `fraqjs/market` generator, npm manifest, and generated `fraqjs/registry`: `fraq-plugin-group-admin@1.0.2` is present but unlisted because `package.json` lacks `fraq.category`; `management` is the matching supported category.
+- Added `fraq.category: "management"` and bumped the package to `1.0.3`. Format, lint, typecheck, build, and npm pack dry-run pass; smoke still fails on a pre-existing mismatch where the help convention text has a sixth line but the test expects five.
 
 ## Open questions
 

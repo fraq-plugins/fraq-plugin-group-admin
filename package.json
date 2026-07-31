@@ -1,6 +1,6 @@
 {
   "name": "fraq-plugin-group-admin",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Fraq group administration plugin for Milky bots.",
   "license": "MIT",
   "repository": {
@@ -37,6 +37,9 @@
     "qq",
     "group-admin"
   ],
+  "fraq": {
+    "category": "management"
+  },
   "peerDependencies": {
     "@fraqjs/fraq": "^0.14.0"
   },
